@@ -1,0 +1,14 @@
+
+
+.cuerpo {
+    background-color: #b6b6b6;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 94vh;
+}
+
+.titulo {
+    width: 1000px;
+    align-items: center;
+}
