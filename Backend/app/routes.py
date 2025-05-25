@@ -14,8 +14,9 @@ def obtener_eventos():
 def crear_evento():
     data = request.json
     nuevo = Evento(
-        magnitud=data["magnitud"],
-        ubicacion=data["ubicacion"]
+        valorMagnitud=data["valorMagnitud"],
+        coordenadaEpicentro=data["coordenadaEpicentro"],
+        coordenadaHipocentro=data["coordenadaHipocentro"],
     )
     db.session.add(nuevo)
     db.session.commit()

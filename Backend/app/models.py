@@ -4,9 +4,11 @@ from datetime import datetime
 class Evento(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     estado = db.Column(db.String(20), default='auto_detectado')
-    magnitud = db.Column(db.Float, nullable=False)
-    ubicacion = db.Column(db.String(100), nullable=False)
-    fecha = db.Column(db.DateTime, default=datetime.utcnow)
+    valorMagnitud = db.Column(db.Float, nullable=False)
+    coordenadaEpicentro = db.Column(db.String(100), nullable=False)
+    coordenadaHipocentro = db.Column(db.String(100), nullable=False)
+    fechaHoraOcurrencia = db.Column(db.DateTime, default=datetime.utcnow)
+    fechaHoraFin = db.Column(db.DateTime, default=datetime.utcnow)
     usuario_revision = db.Column(db.String(50))
     accion_revision = db.Column(db.String(20))
     fecha_revision = db.Column(db.DateTime)
@@ -15,9 +17,11 @@ class Evento(db.Model):
         return {
             "id": self.id,
             "estado": self.estado,
-            "magnitud": self.magnitud,
-            "ubicacion": self.ubicacion,
-            "fecha": self.fecha.isoformat(),
+            "valorMagnitud": self.valorMagnitud,
+            "coordenadaEpicentro": self.coordenadaEpicentro,
+            "coordenadaHipocentro": self.coordenadaHipocentro,
+            "fechaHoraOcurrencia": self.fechaHoraOcurrencia.isoformat(),
+            "fechaHoraFin": self.fechaHoraFin.isoformat(),
             "revision": {
                 "usuario": self.usuario_revision,
                 "accion": self.accion_revision,
