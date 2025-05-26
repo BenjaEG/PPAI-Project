@@ -90,17 +90,9 @@ def crear_cambio_estado():
         fechaHoraInicio = datetime.utcnow()
 
     fechaHoraFin = data.get("fechaHoraFin")
-    if fechaHoraFin:
-        try:
-            fechaHoraFin = datetime.fromisoformat(fechaHoraFin)
-        except Exception:
-            return jsonify({"error": "fechaHoraFin debe estar en formato ISO"}), 400
-    else:
-        fechaHoraFin = None
 
     nuevo_cambio = CambioEstado(
         fechaHoraInicio=fechaHoraInicio,
-        fechaHoraFin=fechaHoraFin,
         estado_id=data["estado_id"]
     )
     db.session.add(nuevo_cambio)
@@ -109,36 +101,32 @@ def crear_cambio_estado():
 
 @bp.route("/evento/<int:evento_id>/cambiar-estado/<string:nuevo_estado>", methods=["PUT"])
 def cambiar_estado_evento(evento_id, nuevo_estado):
-    estado_nombre_a_id = {
-        "Auto Detectado": 1,
-        "Pendiente Revision": 2,
-        "Sin Revision": 3,
-        "Bloqueado": 4,
-        "Rechazado": 5,
-        "Derivado": 6,
-        "Confirmado": 7,
-        "Auto Confirmado": 8,
-        "Pendiente Cierre": 9,
-        "Cerrado": 10
-    }
-    estado_id = estado_nombre_a_id.get(nuevo_estado)
-    if not estado_id:
+    # Buscar el estado por nombre en la base de datos
+    estado = Estado.query.filter_by(nombre=nuevo_estado).first()
+    if not estado:
         return jsonify({"error": "Estado no válido"}), 400
 
     evento = Evento.query.get(evento_id)
     if not evento:
         return jsonify({"error": "Evento no encontrado"}), 404
 
+    # Actualizar fechaHoraFin del CambioEstado actual
+    if evento.cambio_estado_id:
+        cambio_actual = CambioEstado.query.get(evento.cambio_estado_id)
+        if cambio_actual and not cambio_actual.fechaHoraFin:
+            cambio_actual.fechaHoraFin = datetime.utcnow()
+            db.session.commit()
+
     # Crear un nuevo CambioEstado
     nuevo_cambio = CambioEstado(
         fechaHoraInicio=datetime.utcnow(),
-        estado_id=estado_id
+        estado_id=estado.id
     )
     db.session.add(nuevo_cambio)
     db.session.commit()
 
     # Actualizar el evento con el nuevo estado y cambio_estado_id
-    evento.estado_id = estado_id
+    evento.estado_id = estado.id
     evento.cambio_estado_id = nuevo_cambio.id
     db.session.commit()
     return jsonify(evento.to_dict()), 200
