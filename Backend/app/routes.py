@@ -8,23 +8,11 @@ bp = Blueprint("api", __name__)
 @bp.route("/eventos", methods=["GET"])
 def obtener_eventos():
     estado_nombre = request.args.get("estado", type=str)
-    estado_nombre_a_id = {
-        "Auto Detectado": 1,
-        "Pendiente Revision": 2,
-        "Sin Revision": 3,
-        "Bloqueado": 4,
-        "Rechazado": 5,
-        "Derivado": 6,
-        "Confirmado": 7,
-        "Auto Confirmado": 8,
-        "Pendiente Cierre": 9,
-        "Cerrado": 10
-    }
     query = Evento.query
     if estado_nombre:
-        estado_id = estado_nombre_a_id.get(estado_nombre)
-        if estado_id:
-            query = query.filter_by(estado_id=estado_id)
+        estado = Estado.query.filter_by(nombre=estado_nombre).first()
+        if estado:
+            query = query.filter_by(estado_id=estado.id)
         else:
             return jsonify([]), 200
     eventos = query.all()
