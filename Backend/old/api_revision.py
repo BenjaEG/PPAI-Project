@@ -77,6 +77,7 @@ def crear_evento():
     db.session.commit()
     return jsonify(nuevo.to_dict()), 201
 
+# Ruta para obtener todos los eventos
 @app.route("/eventos", methods=["GET"])
 def obtener_eventos():
     eventos = Evento.query.all()
