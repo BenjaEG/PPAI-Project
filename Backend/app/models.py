@@ -100,8 +100,34 @@ class Evento(db.Model):
             "origen_de_generacion_id": self.origen_de_generacion_id,
             "clasificacion_sismo_id": self.clasificacion_sismo_id
         }
+    
+    def bloquear(self):
+        cambio = CambioEstado(
+            fechaHoraInicio=datetime.utcnow(),
+            estado_id= 4
+        )
+        db.session.add(cambio)
+        db.session.commit()
+        self.estado_id = 4
+        self.cambio_estado_id = cambio.id
+        db.session.commit()
 
-    def to_dict_nombres(self):
+    def rechazar(self):
+        cambio = CambioEstado(
+            fechaHoraInicio=datetime.utcnow(),
+            estado_id= 3
+        )
+        db.session.add(cambio)
+        db.session.commit()
+        self.estado_id = 3
+        self.cambio_estado_id = cambio.id
+        db.session.commit()
+    
+    def getAlcance(self):
+        alcance = Alcance.query.get(self.alcance_id)
+        return alcance.nombre if alcance else None
+
+    def getDatos(self):
         alcance = Alcance.query.get(self.alcance_id)
         origen = OrigenDeGeneracion.query.get(self.origen_de_generacion_id)
         clasificacion = ClasificacionSismo.query.get(self.clasificacion_sismo_id)
@@ -120,7 +146,7 @@ class Evento(db.Model):
                 "accion": self.accion_revision,
                 "fecha": self.fecha_revision.isoformat() if self.fecha_revision else None
             },
-            "alcance": alcance.nombre if alcance else None,
+            "alcance": self.getAlcance(),
             "origen_de_generacion": origen.nombre if origen else None,
             "clasificacion_sismo": clasificacion.nombre if clasificacion else None
         }
