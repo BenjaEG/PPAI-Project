@@ -2,7 +2,7 @@ let eventoSeleccionadoId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    const API_URL = 'http://localhost:5000';
+    const API_URL = 'http://192.168.0.194:5000';
 
     // Renderiza la tabla de eventos
     function renderEventos(eventos) {
@@ -87,11 +87,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${
                         eventoSeleccionadoId == evento.id
                         ? `
-                            <button type="button" class="btn btn-primary btn-confirmar" data-id="${evento.id}">Confirmar</button>
-                            <button type="button" class="btn btn-danger btn-rechazar" data-id="${evento.id}">Rechazar</button>
-                            <button type="button" class="btn btn-warning btn-solicitar" data-id="${evento.id}">Solicitar Revision Experto</button>
+                            <button type="button" class="btn btn-primary btn-confirmar w-100 mb-1" data-id="${evento.id}">Confirmar</button>
+                            <button type="button" class="btn btn-danger btn-rechazar w-100 mb-1" data-id="${evento.id}">Rechazar</button>
+                            <button type="button" class="btn btn-warning btn-solicitar w-100" data-id="${evento.id}">Solicitar Revision Experto</button>
                         `
-                        : `<button type="button" class="btn btn-primary select-button" data-id="${evento.id}">Seleccionar</button>`
+                        : `<button type="button" class="btn btn-primary select-button w-100" data-id="${evento.id}">Seleccionar</button>`
                     }
                 </td>
             `;

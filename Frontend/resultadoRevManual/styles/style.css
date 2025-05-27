@@ -2,3 +2,23 @@
     background-color: #f8f9fa;
     color: #495057;
 }
+
+@media (max-width: 767px) {
+    .container {
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+    .table-responsive {
+        font-size: 0.95rem;
+    }
+    h1 {
+        font-size: 1.3rem;
+    }
+    .navbar-brand {
+        font-size: 1rem;
+    }
+    .btn {
+        font-size: 0.9rem;
+        padding: 0.3rem 0.7rem;
+    }
+}
