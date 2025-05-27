@@ -15,7 +15,7 @@ class Evento(db.Model):
     estado = db.Column(db.String(20), default='auto_detectado')
     magnitud = db.Column(db.Float, nullable=False)
     ubicacion = db.Column(db.String(100), nullable=False)
-    fecha = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha = db.Column(db.DateTime, default=datetime.now)
     usuario_revision = db.Column(db.String(50))
     accion_revision = db.Column(db.String(20))
     fecha_revision = db.Column(db.DateTime)
@@ -60,7 +60,7 @@ def revisar_evento(evento_id):
 
     evento.usuario_revision = usuario
     evento.accion_revision = accion
-    evento.fecha_revision = datetime.utcnow()
+    evento.fecha_revision = datetime.now()
 
     db.session.commit()
     return jsonify(evento.to_dict()), 200

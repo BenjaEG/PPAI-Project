@@ -1,6 +1,19 @@
 from . import db
-from .models import Estado, CambioEstado, Evento, Alcance, OrigenDeGeneracion, ClasificacionSismo
-from datetime import datetime
+from .models import (
+    Estado,
+    CambioEstado,
+    Evento,
+    Alcance,
+    OrigenDeGeneracion,
+    ClasificacionSismo,
+    EstacionSismologica,
+    TipoDeDato,
+    Sismografo,
+    SerieTemporal,
+    MuestraSismica,
+    DetalleMuestraSismica
+)
+from datetime import datetime, timedelta
 
 def bulk_create_eventos():
     if Estado.query.first() is not None:
@@ -9,6 +22,7 @@ def bulk_create_eventos():
 
     print("Insertando datos iniciales...")
 
+    # Estados
     estados = [
         Estado(nombre=e["nombre"], ambito=e["ambito"])
         for e in [
@@ -27,6 +41,7 @@ def bulk_create_eventos():
     db.session.bulk_save_objects(estados)
     db.session.commit()
 
+    # Cambios de estado
     cambios = [
         CambioEstado(
             fechaHoraInicio=datetime.fromisoformat(c["fechaHoraInicio"].replace("Z", "+00:00")),
@@ -54,6 +69,7 @@ def bulk_create_eventos():
     db.session.bulk_save_objects(cambios)
     db.session.commit()
 
+    # Alcances
     alcances = [
         Alcance(nombre="sismos locales", descripcion="hasta 100km"),
         Alcance(nombre="sismos regionales", descripcion="hasta 1000km"),
@@ -62,6 +78,7 @@ def bulk_create_eventos():
     db.session.bulk_save_objects(alcances)
     db.session.commit()
 
+    # Origenes de generación
     origenes = [
         OrigenDeGeneracion(nombre="sismo interplaca", descripcion="Sismo generado por el movimiento entre placas tectónicas."),
         OrigenDeGeneracion(nombre="sismo volcánico", descripcion="Sismo asociado a la actividad volcánica y movimientos magmáticos."),
@@ -70,6 +87,7 @@ def bulk_create_eventos():
     db.session.bulk_save_objects(origenes)
     db.session.commit()
 
+    # Clasificaciones de sismo
     clasificaciones = [
         ClasificacionSismo(nombre="sismo superficial", kmProfundidadDesde=0, kmProfundidadHasta=60),
         ClasificacionSismo(nombre="sismo intermedio", kmProfundidadDesde=61, kmProfundidadHasta=300),
@@ -78,6 +96,7 @@ def bulk_create_eventos():
     db.session.bulk_save_objects(clasificaciones)
     db.session.commit()
 
+    # Eventos
     eventos = [
         Evento(
             estado_id=e["estado_id"],
@@ -113,4 +132,70 @@ def bulk_create_eventos():
     db.session.bulk_save_objects(eventos)
     db.session.commit()
 
+    # Estaciones Sismológicas
+    estaciones = [
+        EstacionSismologica(codigoEstacion=1, nombre="Estación Norte"),
+        EstacionSismologica(codigoEstacion=2, nombre="Estación Sur"),
+        EstacionSismologica(codigoEstacion=3, nombre="Estación Centro"),
+    ]
+    db.session.bulk_save_objects(estaciones)
+    db.session.commit()
+
+    # Tipos de Dato
+    tipos_dato = [
+        TipoDeDato(id= 1, denominacion="km/seg", nombreUnidadMedida="Kilómetro por segundo", valorUmbral=10),
+        TipoDeDato(id= 2, denominacion="Hz", nombreUnidadMedida="Hertz", valorUmbral=50),
+        TipoDeDato(id= 3, denominacion="Km/ciclo", nombreUnidadMedida="Kilómetro por ciclo", valorUmbral=5),
+    ]
+    db.session.bulk_save_objects(tipos_dato)
+    db.session.commit()
+
+    # Sismógrafos
+    sismografos = [
+        Sismografo(identificadorSismografo="SISMO-001", nroSerie=1, fechaAdquisicion=datetime(2022, 1, 1), estacionSismologica = 1),
+        Sismografo(identificadorSismografo="SISMO-002", nroSerie=2, fechaAdquisicion=datetime(2023, 1, 1), estacionSismologica = 3),
+    ]
+    db.session.bulk_save_objects(sismografos)
+    db.session.commit()
+
+    # Series temporales, muestras y detalles (estático, 2 series por evento, 1 muestra por serie, 3 detalles por muestra)
+    series_temporales = []
+    muestras_sismicas = []
+    detalles_muestras = []
+
+    eventos = Evento.query.all()
+    sismografos_objs = Sismografo.query.all()
+
+    for evento in eventos:
+        for st_num in range(2):
+            sismografo = sismografos_objs[st_num % len(sismografos_objs)]
+            serie = SerieTemporal(
+                fechaHoraInicioRegistroMuestras=evento.fechaHoraOcurrencia,
+                fechaHoraInicio=evento.fechaHoraOcurrencia,
+                frecuenciaMuestreo=50.0 + st_num,
+                sismografo_nroSerie=sismografo.nroSerie,  # Cambiado aquí
+                evento_id=evento.id
+            )
+            db.session.add(serie)
+            db.session.commit()
+            series_temporales.append(serie)
+
+            muestra = MuestraSismica(
+                fechaHoraMuestra=evento.fechaHoraOcurrencia,
+                serie_temporal_id=serie.id
+            )
+            db.session.add(muestra)
+            db.session.commit()
+            muestras_sismicas.append(muestra)
+
+            for tipo_dato in ["1", "2", "3"]:
+                detalle = DetalleMuestraSismica(
+                    valor=10.0 + st_num,
+                    tipoDeDato=tipo_dato,
+                    muestra_sismica_id=muestra.id
+                )
+                db.session.add(detalle)
+                detalles_muestras.append(detalle)
+
+    db.session.commit()
     print("Datos iniciales insertados correctamente.")
