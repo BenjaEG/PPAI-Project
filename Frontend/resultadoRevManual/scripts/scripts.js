@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const API_URL = 'http://192.168.0.194:5000';
 
-    // Renderiza la tabla de eventos
+    // Renderiza la tabla de eventos o el detalle de un evento
     function renderEventos(eventos) {
         const eventosContainer = document.getElementById('eventosContainer');
         const tablaCabecera = document.getElementById('tablaCabecera');
@@ -20,14 +20,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Si hay solo uno y está seleccionado, mostrar todos los datos (sin revision)
+        // Si hay solo uno y está seleccionado, mostrar todos los datos en detalle
         if (eventos.length === 1 && eventoSeleccionadoId == eventos[0].id) {
             const evento = eventos[0];
             if (tablaCabecera) tablaCabecera.style.display = 'none';
-            eventosContainer.innerHTML = `
+
+            // Tabla principal de datos del evento
+            let html = `
                 <tr>
                     <td colspan="2" class="text-center">
-                        <table class="table table-bordered w-auto mx-auto">
+                        <table class="table table-bordered w-auto mx-auto mb-4">
                             <tr><th>ID</th><td>${evento.id}</td></tr>
                             <tr><th>Magnitud</th><td>${evento.valorMagnitud}</td></tr>
                             <tr><th>Fecha Fin</th><td>${evento.fechaHoraFin}</td></tr>
@@ -37,44 +39,52 @@ document.addEventListener('DOMContentLoaded', () => {
                             <tr><th>Alcance</th><td>${evento.alcance || evento.alcance_id}</td></tr>
                             <tr><th>Origen de Generación</th><td>${evento.origen_de_generacion || evento.origen_de_generacion_id}</td></tr>
                             <tr><th>Clasificación Sismo</th><td>${evento.clasificacion_sismo || evento.clasificacion_sismo_id}</td></tr>
-                            <tr>
-                                <td colspan="2" class="text-center">
-                                    <button type="button" class="btn btn-primary btn-confirmar" data-id="${evento.id}">Confirmar</button>
-                                    <button type="button" class="btn btn-danger btn-rechazar" data-id="${evento.id}">Rechazar</button>
-                                    <button type="button" class="btn btn-warning btn-solicitar" data-id="${evento.id}">Solicitar Revision Experto</button>
-                                </td>
-                            </tr>
                         </table>
+                        <h5 class="mb-2">Series Temporales</h5>
+                        ${renderSeriesTemporales(evento.series_temporales)}
+                        <div class="text-center mt-3">
+                            <!-- Botones info arriba -->
+                            <button type="button" class="btn btn-info me-2" id="visualizarMapaBtn">Visualizar Mapa</button>
+                            <button type="button" class="btn btn-info me-2" id="modificarDatosBtn">Modificar Datos</button>
+                        </div>
+                        <div class="text-center mt-3">
+                            <!-- Botones de acción debajo -->
+                            <button type="button" class="btn btn-success me-2" id="confirmarBtn">Confirmar</button>
+                            <button type="button" class="btn btn-danger me-2" id="rechazarBtn">Rechazar</button>
+                            <button type="button" class="btn btn-warning me-2" id="solicitarRevisionBtn">Solicitar Revisión</button>
+                        </div>
                     </td>
                 </tr>
             `;
-            // Reasignar listeners a los botones
-            document.querySelector('.btn-confirmar').addEventListener('click', async (event) => {
-                event.preventDefault();
-                const id = event.target.getAttribute('data-id');
-                await cambiarEstadoEvento(id, "Confirmado");
+            eventosContainer.innerHTML = html;
+
+            // Botón Confirmar
+            document.getElementById('confirmarBtn').addEventListener('click', async () => {
+                await cambiarEstadoEvento(evento.id, "Confirmado");
                 eventoSeleccionadoId = null;
-                await fetchEventos();
+                fetchEventos();
             });
-            document.querySelector('.btn-rechazar').addEventListener('click', async (event) => {
-                event.preventDefault();
-                const id = event.target.getAttribute('data-id');
-                await cambiarEstadoEvento(id, "Rechazado");
+
+            // Botón Rechazar
+            document.getElementById('rechazarBtn').addEventListener('click', async () => {
+                await cambiarEstadoEvento(evento.id, "Rechazado");
                 eventoSeleccionadoId = null;
-                await fetchEventos();
+                fetchEventos();
             });
-            document.querySelector('.btn-solicitar').addEventListener('click', async (event) => {
-                event.preventDefault();
-                const id = event.target.getAttribute('data-id');
-                await cambiarEstadoEvento(id, "Derivado");
+
+            // Botón Solicitar Revisión
+            document.getElementById('solicitarRevisionBtn').addEventListener('click', async () => {
+                await cambiarEstadoEvento(evento.id, "Pendiente Revision");
                 eventoSeleccionadoId = null;
-                await fetchEventos();
+                fetchEventos();
             });
+
             return;
         } else {
             if (tablaCabecera) tablaCabecera.style.display = '';
         }
 
+        // Tabla de lista de eventos
         eventos.forEach(evento => {
             const fila = document.createElement('tr');
             fila.innerHTML = `
@@ -84,15 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${evento.coordenadaEpicentro}</td>
                 <td>${evento.coordenadaHipocentro}</td>
                 <td>
-                    ${
-                        eventoSeleccionadoId == evento.id
-                        ? `
-                            <button type="button" class="btn btn-primary btn-confirmar w-100 mb-1" data-id="${evento.id}">Confirmar</button>
-                            <button type="button" class="btn btn-danger btn-rechazar w-100 mb-1" data-id="${evento.id}">Rechazar</button>
-                            <button type="button" class="btn btn-warning btn-solicitar w-100" data-id="${evento.id}">Solicitar Revision Experto</button>
-                        `
-                        : `<button type="button" class="btn btn-primary select-button w-100" data-id="${evento.id}">Seleccionar</button>`
-                    }
+                    <button type="button" class="btn btn-primary select-button w-100" data-id="${evento.id}">Seleccionar</button>
                 </td>
             `;
             eventosContainer.appendChild(fila);
@@ -111,41 +113,86 @@ document.addEventListener('DOMContentLoaded', () => {
                 await fetchEventoPorId(id);
             });
         });
-        // Botón Confirmar (azul)
-        const confirmarButtons = document.querySelectorAll('.btn-confirmar');
-        confirmarButtons.forEach(button => {
-            button.addEventListener('click', async (event) => {
-                event.preventDefault();
-                const id = event.target.getAttribute('data-id');
-                await cambiarEstadoEvento(id, "Confirmado");
-                eventoSeleccionadoId = null; // Limpiar selección
-                await fetchEventos();        // Mostrar todos
-            });
-        });
+    }
 
-        // Botón Rechazar (rojo)
-        const rechazarButtons = document.querySelectorAll('.btn-rechazar');
-        rechazarButtons.forEach(button => {
-            button.addEventListener('click', async (event) => {
-                event.preventDefault();
-                const id = event.target.getAttribute('data-id');
-                await cambiarEstadoEvento(id, "Rechazado");
-                eventoSeleccionadoId = null; // Limpiar selección
-                await fetchEventos();        // Mostrar todos
-            });
+    // Renderiza las series temporales y sus datos anidados
+    function renderSeriesTemporales(series) {
+        if (!series || series.length === 0) {
+            return `<div class="text-center">No hay series temporales.</div>`;
+        }
+        let html = '';
+        series.forEach((serie, idx) => {
+            html += `
+                <div class="mb-4 border rounded p-2">
+                    <h6>Serie Temporal #${idx + 1} (ID: ${serie.id})</h6>
+                    <table class="table table-sm table-bordered mb-2">
+                        <tr><th>Fecha Inicio Registro</th><td>${serie.fechaHoraInicioRegistroMuestras}</td></tr>
+                        <tr><th>Fecha Inicio</th><td>${serie.fechaHoraInicio}</td></tr>
+                        <tr><th>Frecuencia Muestreo</th><td>${serie.frecuenciaMuestreo}</td></tr>
+                        <tr><th>Sismógrafo</th><td>${serie.datosSismografo?.identificadorSismografo || '-'}</td></tr>
+                        <tr><th>Estación</th><td>
+                            ${serie.datosSismografo?.estacion ? 
+                                `(${serie.datosSismografo.estacion.codigoEstacion}) ${serie.datosSismografo.estacion.nombre}` : '-'}
+                        </td></tr>
+                    </table>
+                    <div>
+                        <strong>Muestras Sísmicas:</strong>
+                        ${renderMuestrasSismicas(serie.datosMuestrasSismicas)}
+                    </div>
+                </div>
+            `;
         });
+        return html;
+    }
 
-        // Botón Solicitar (amarillo)
-        const solicitarButtons = document.querySelectorAll('.btn-solicitar');
-        solicitarButtons.forEach(button => {
-            button.addEventListener('click', async (event) => {
-                event.preventDefault();
-                const id = event.target.getAttribute('data-id');
-                await cambiarEstadoEvento(id, "Derivado");
-                eventoSeleccionadoId = null; // Limpiar selección
-                await fetchEventos();        // Mostrar todos
-            });
+    // Renderiza las muestras sísmicas y sus detalles
+    function renderMuestrasSismicas(muestras) {
+        if (!muestras || muestras.length === 0) {
+            return `<div class="text-center">No hay muestras sísmicas.</div>`;
+        }
+        let html = '';
+        muestras.forEach((muestra, idx) => {
+            html += `
+                <div class="mb-2 border rounded p-2">
+                    <div><strong>Muestra #${idx + 1} (ID: ${muestra.id})</strong></div>
+                    <div>Fecha/Hora: ${muestra.fechaHoraMuestra}</div>
+                    <div>
+                        <strong>Detalles:</strong>
+                        ${renderDetallesMuestra(muestra.detalles)}
+                    </div>
+                </div>
+            `;
         });
+        return html;
+    }
+
+    // Renderiza los detalles de una muestra sísmica
+    function renderDetallesMuestra(detalles) {
+        if (!detalles || detalles.length === 0) {
+            return `<div class="text-center">No hay detalles.</div>`;
+        }
+        let html = `
+            <table class="table table-sm table-bordered mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Valor</th>
+                        <th>Tipo de Dato</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        detalles.forEach(detalle => {
+            html += `
+                <tr>
+                    <td>${detalle.id}</td>
+                    <td>${detalle.valor}</td>
+                    <td>${detalle.tipoDeDato || '-'}</td>
+                </tr>
+            `;
+        });
+        html += `</tbody></table>`;
+        return html;
     }
 
     // Trae todos los eventos o el seleccionado si corresponde

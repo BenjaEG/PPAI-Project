@@ -1,5 +1,10 @@
 from flask import Blueprint, request, jsonify
-from .models import Evento, Estado, CambioEstado
+from .models import (
+    Evento,
+    Estado,
+    Sismografo,
+    TipoDeDato,
+)
 from . import db
 from datetime import datetime
 
@@ -16,7 +21,7 @@ def obtener_eventos():
             query = query.filter_by(estado_id=estado.id)
         else:
             return jsonify([]), 200
-    eventos = query.all()
+    eventos = query.order_by(Evento.fechaHoraOcurrencia.desc()).all()
     return jsonify([evento.getDatos() for evento in eventos]), 200
 
 @bp.route("/revisar-evento/<int:evento_id>", methods=["POST"])
@@ -69,8 +74,13 @@ def buscarDatosSismicos(evento_id):
     evento = Evento.query.get(evento_id)
     if not evento:
         return jsonify({"error": "Evento no encontrado"}), 404
+
     datos = evento.getDatos()
     datos["alcance"] = evento.getAlcance()
     datos["origen_de_generacion"] = evento.getOrigenDeGeneracion()
     datos["clasificacion_sismo"] = evento.clasificacionSismo()
+
+    # Usar la función del modelo para traer las series temporales
+    datos["series_temporales"] = evento.buscarDatosSeriesTemporales()
+
     return jsonify(datos), 200
