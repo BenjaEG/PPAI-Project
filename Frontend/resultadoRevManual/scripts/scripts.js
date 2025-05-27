@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (eventos.length === 0) {
             eventosContainer.innerHTML = `
                 <tr>
-                    <td colspan="7" class="text-center">No se encontraron eventos.</td>
+                    <td colspan="9" class="text-center">No se encontraron eventos.</td>
                 </tr>
             `;
             if (tablaCabecera) tablaCabecera.style.display = '';
@@ -80,7 +80,6 @@ document.addEventListener('DOMContentLoaded', () => {
             fila.innerHTML = `
                 <td>${evento.id}</td>
                 <td>${evento.valorMagnitud}</td>
-                <td>${evento.fechaHoraFin}</td>
                 <td>${evento.fechaHoraOcurrencia}</td>
                 <td>${evento.coordenadaEpicentro}</td>
                 <td>${evento.coordenadaHipocentro}</td>

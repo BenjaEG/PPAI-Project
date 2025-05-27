@@ -5,6 +5,7 @@ from datetime import datetime
 
 bp = Blueprint("api", __name__)
 
+
 @bp.route("/eventos", methods=["GET"])
 def obtener_eventos():
     estado_nombre = request.args.get("estado", type=str)
@@ -16,23 +17,7 @@ def obtener_eventos():
         else:
             return jsonify([]), 200
     eventos = query.all()
-    return jsonify([evento.to_dict() for evento in eventos]), 200
-
-@bp.route("/crear-evento", methods=["POST"])
-def crear_evento():
-    data = request.json
-    nuevo = Evento(
-        estado_id=data["estado_id"],
-        cambio_estado_id=data["cambio_estado_id"],
-        valorMagnitud=data["valorMagnitud"],
-        coordenadaEpicentro=data["coordenadaEpicentro"],
-        coordenadaHipocentro=data["coordenadaHipocentro"],
-    )
-    db.session.add(nuevo)
-    db.session.commit()
-    return jsonify(nuevo.to_dict()), 201
-
-
+    return jsonify([evento.getDatos() for evento in eventos]), 200
 
 @bp.route("/revisar-evento/<int:evento_id>", methods=["POST"])
 def revisar_evento(evento_id):
@@ -59,33 +44,10 @@ def revisar_evento(evento_id):
 
     evento.usuario_revision = usuario
     evento.accion_revision = accion
-    evento.fecha_revision = datetime.utcnow()
+    evento.fecha_revision = datetime.now()
 
     db.session.commit()
     return jsonify(evento.to_dict()), 200
-
-@bp.route("/cambio-estado", methods=["POST"])
-def crear_cambio_estado():
-    data = request.json
-
-    fechaHoraInicio = data.get("fechaHoraInicio")
-    if fechaHoraInicio:
-        try:
-            fechaHoraInicio = datetime.fromisoformat(fechaHoraInicio)
-        except Exception:
-            return jsonify({"error": "fechaHoraInicio debe estar en formato ISO"}), 400
-    else:
-        fechaHoraInicio = datetime.utcnow()
-
-    fechaHoraFin = data.get("fechaHoraFin")
-
-    nuevo_cambio = CambioEstado(
-        fechaHoraInicio=fechaHoraInicio,
-        estado_id=data["estado_id"]
-    )
-    db.session.add(nuevo_cambio)
-    db.session.commit()
-    return jsonify(nuevo_cambio.to_dict()), 201
 
 @bp.route("/evento/<int:evento_id>/cambiar-estado/<string:nuevo_estado>", methods=["PUT"])
 def cambiar_estado_evento(evento_id, nuevo_estado):
@@ -100,11 +62,15 @@ def cambiar_estado_evento(evento_id, nuevo_estado):
     else:
         return jsonify({"error": "Estado no encontrado"}), 400
 
-    return jsonify(evento.to_dict()), 200
+    return jsonify(evento.getDatos()), 200
 
 @bp.route("/evento/<int:evento_id>", methods=["GET"])
-def obtener_evento(evento_id):
+def buscarDatosSismicos(evento_id):
     evento = Evento.query.get(evento_id)
     if not evento:
         return jsonify({"error": "Evento no encontrado"}), 404
-    return jsonify(evento.getDatos()), 200
+    datos = evento.getDatos()
+    datos["alcance"] = evento.getAlcance()
+    datos["origen_de_generacion"] = evento.getOrigenDeGeneracion()
+    datos["clasificacion_sismo"] = evento.clasificacionSismo()
+    return jsonify(datos), 200

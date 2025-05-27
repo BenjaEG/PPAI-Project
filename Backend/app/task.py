@@ -5,7 +5,7 @@ from app import db
 
 def liberar_eventos_ocupados():
     while True:
-        ahora = datetime.utcnow()
+        ahora = datetime.now()
         cinco_minutos_atras = ahora - timedelta(minutes=5)
         eventos_bloqueados = Evento.query.filter_by(estado_id=4).all()
         for evento in eventos_bloqueados:
