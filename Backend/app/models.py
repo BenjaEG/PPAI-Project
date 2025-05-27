@@ -12,6 +12,12 @@ class Estado(db.Model):
             "nombre": self.nombre,
             "ambito": self.ambito
         }
+    
+    def esAutoDetectado(self):
+        return self.nombre.strip().lower().replace("_", " ") == "auto detectado"
+
+    def esPendienteDeRevision(self):
+        return self.nombre.strip().lower().replace("_", " ") == "pendiente revision"
 
 class CambioEstado(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -219,7 +225,7 @@ class Evento(db.Model):
     origen_de_generacion_id = db.Column(db.Integer, db.ForeignKey('origen_de_generacion.id'))
     clasificacion_sismo_id = db.Column(db.Integer, db.ForeignKey('clasificacion_sismo.id'))
     coleccionSeriesTemporales = db.relationship('SerieTemporal', backref='evento', lazy=True)
-    fechaHoraRevision = db.Column(db.DateTime, nullable=True, default=datetime.now)
+    fechaHoraRevision = db.Column(db.DateTime, nullable=True)
     responsableRevision = db.Column(db.String(100), nullable=True)
 
     def to_dict(self):
@@ -274,6 +280,14 @@ class Evento(db.Model):
     def getEstado(self):
         estado = Estado.query.get(self.estado_id)
         return estado.nombre if estado else None
+    
+    def esPendienteDeRevision(self):
+        estado = Estado.query.get(self.estado_id)
+        return estado.esPendienteDeRevision() if estado else False
+    
+    def esAutoDetectado(self):
+        estado = Estado.query.get(self.estado_id)
+        return estado.esAutoDetectado() if estado else False
 
     def getDatos(self):
         return {

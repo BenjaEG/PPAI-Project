@@ -202,11 +202,18 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         try {
-            const response = await fetch(`${API_URL}/eventos?estado=Pendiente Revision`);
-            if (!response.ok) {
+            // Trae ambos estados
+            const [pendientesRes, autodetectadosRes] = await Promise.all([
+                fetch(`${API_URL}/eventos?estado=Pendiente Revision`),
+                fetch(`${API_URL}/eventos?estado=Auto Detectado`)
+            ]);
+            if (!pendientesRes.ok && !autodetectadosRes.ok) {
                 throw new Error('Error al obtener los eventos');
             }
-            const eventos = await response.json();
+            const pendientes = pendientesRes.ok ? await pendientesRes.json() : [];
+            const autodetectados = autodetectadosRes.ok ? await autodetectadosRes.json() : [];
+            // Unir ambos arrays
+            const eventos = [...pendientes, ...autodetectados];
             renderEventos(eventos);
         } catch (error) {
             console.error('Error al cargar los eventos:', error);
