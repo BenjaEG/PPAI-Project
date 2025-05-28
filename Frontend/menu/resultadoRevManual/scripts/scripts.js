@@ -62,6 +62,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Botón Confirmar
             document.getElementById('confirmarBtn').addEventListener('click', async () => {
+                const usuario = sessionStorage.getItem('usuario');
+                if (!usuario) {
+                    alert('Debe iniciar sesión para realizar esta acción.');
+                    window.location.href = '/index.html';
+                    return;
+                }
+                await tomarSeleccionOpc(evento.id, usuario, "confirmar");
                 eventoSeleccionadoId = null;
                 fetchEventos();
             });
@@ -74,13 +81,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.location.href = '/index.html';
                     return;
                 }
-                await tomarSeleccionOpc(evento.id, usuario);
+                await tomarSeleccionOpc(evento.id, usuario, "rechazar");
                 eventoSeleccionadoId = null;
                 fetchEventos();
             });
 
             // Botón Solicitar Revisión
             document.getElementById('solicitarRevisionBtn').addEventListener('click', async () => {
+                const usuario = sessionStorage.getItem('usuario');
+                if (!usuario) {
+                    alert('Debe iniciar sesión para realizar esta acción.');
+                    window.location.href = '/index.html';
+                    return;
+                }
+                await tomarSeleccionOpc(evento.id, usuario, "solicitar revision");
                 eventoSeleccionadoId = null;
                 fetchEventos();
             });
@@ -280,9 +294,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Cambia el estado del evento a un nuevo estado
-    async function tomarSeleccionOpc(id, usuario) {
+    async function tomarSeleccionOpc(id, usuario, opcion) {
         try {
-            const response = await fetch(`${API_URL}/evento/${id}/rechazar`, {
+            const response = await fetch(`${API_URL}/evento/${id}/opcion/${opcion}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ usuario })
