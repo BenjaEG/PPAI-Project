@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from .services.gestor_revision import GestorRevisionEventos
 from .models import (
-    Evento,
+    EventoSismico,
 )
 from . import db
 from datetime import datetime
@@ -21,7 +21,7 @@ def revisar_evento(evento_id):
     accion = data.get("accion")
     usuario = data.get("usuario")
 
-    evento = Evento.query.get(evento_id)
+    evento = EventoSismico.query.get(evento_id)
     if not evento:
         return jsonify({"error": "Evento no encontrado"}), 404
 
@@ -55,10 +55,13 @@ def tomarSeleccionES(evento_id):
 
 @bp.route("/evento/<int:evento_id>/rechazar", methods=["PUT"])
 def tomarSeleccionOpc(evento_id):
-    evento = gestor.buscarEstadoRechazado(evento_id)
+    data = request.get_json()
+    usuario = data.get("usuario") if data else None
+    if not usuario:
+        return jsonify({"error": "Usuario no proporcionado"}), 400
+    evento = gestor.buscarEstadoRechazado(evento_id, usuario)
     if not evento:
         return jsonify({"error": "Evento no encontrado"}), 404
-
     return jsonify(evento.getDatos()), 200
 
 @bp.route("/evento/<int:evento_id>", methods=["GET"])

@@ -112,6 +112,7 @@ class TipoDeDato(db.Model):
 
 class DetalleMuestraSismica(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(50), nullable=False)
     valor = db.Column(db.Float, nullable=False)
     tipoDeDato = db.Column(db.Integer, db.ForeignKey('tipo_de_dato.id'), nullable=False)
     muestra_sismica_id = db.Column(db.Integer, db.ForeignKey('muestra_sismica.id'), nullable=False)
@@ -120,6 +121,7 @@ class DetalleMuestraSismica(db.Model):
         tipo_dato_obj = TipoDeDato.query.get(self.tipoDeDato)
         return {
             "id": self.id,
+            "nombre": self.nombre,
             "valor": self.valor,
             "tipoDeDato": tipo_dato_obj.getDenominacion() if tipo_dato_obj else None,
             "muestra_sismica_id": self.muestra_sismica_id
@@ -167,7 +169,7 @@ class SerieTemporal(db.Model):
     fechaHoraInicio = db.Column(db.DateTime, nullable=True, default=datetime.now)
     frecuenciaMuestreo = db.Column(db.Float, nullable=False)
     sismografo_nroSerie = db.Column(db.Integer, db.ForeignKey('sismografo.nroSerie'), nullable=False)
-    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento_sismico.id'), nullable=False)
     coleccionMuestrasSismicas = db.relationship('MuestraSismica', backref='serie_temporal', lazy=True)
 
     def getDatos(self):
@@ -183,7 +185,7 @@ class SerieTemporal(db.Model):
             },  
         }
 
-class Evento(db.Model):
+class EventoSismico(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     estado_id = db.Column(db.Integer, db.ForeignKey('estado.id'), nullable=False)
     cambio_estado_id = db.Column(db.Integer, db.ForeignKey('cambio_estado.id'))
@@ -210,13 +212,15 @@ class Evento(db.Model):
         self.cambio_estado_id = cambio.id
         db.session.commit()
 
-    def rechazar(self):
+    def rechazar(self, usuario):
         if self.cambio_estado_id:
             cambio_anterior = CambioEstado.query.get(self.cambio_estado_id)
             if cambio_anterior and not cambio_anterior.fechaHoraFin:
                 cambio_anterior.fechaHoraFin = datetime.now()
                 db.session.commit()
         cambio = CambioEstado.new(datetime.now(), 3)
+        self.setFechaHoraRevision()
+        self.setResponsableRevision(usuario)
         self.estado_id = 3
         self.cambio_estado_id = cambio.id
         db.session.commit()
@@ -253,3 +257,11 @@ class Evento(db.Model):
     
     def buscarDatosSeriesTemporales(self):
         return [serie.getDatos() for serie in self.coleccionSeriesTemporales]
+    
+    def setResponsableRevision(self, usuario):
+        self.responsableRevision = usuario
+        db.session.commit()
+
+    def setFechaHoraRevision(self):
+        self.fechaHoraRevision = datetime.now()
+        db.session.commit()

@@ -36,12 +36,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             <tr><th>Fecha Ocurrencia</th><td>${evento.fechaHoraOcurrencia}</td></tr>
                             <tr><th>Coordenada Epicentro</th><td>${evento.coordenadaEpicentro}</td></tr>
                             <tr><th>Coordenada Hipocentro</th><td>${evento.coordenadaHipocentro}</td></tr>
-                            <tr><th>Alcance</th><td>${evento.alcance || evento.alcance_id}</td></tr>
-                            <tr><th>Origen de Generación</th><td>${evento.origen_de_generacion || evento.origen_de_generacion_id}</td></tr>
-                            <tr><th>Clasificación Sismo</th><td>${evento.clasificacion_sismo || evento.clasificacion_sismo_id}</td></tr>
+                            <tr><th>Alcance</th><td>${evento.alcance || '-'}</td></tr>
+                            <tr><th>Origen de Generación</th><td>${evento.origen_de_generacion || '-'}</td></tr>
+                            <tr><th>Clasificación Sismo</th><td>${evento.clasificacion_sismo || '-'}</td></tr>
                         </table>
                         <h5 class="mb-2">Series Temporales</h5>
                         ${renderSeriesTemporales(evento.series_temporales)}
+                        <h5 class="mb-2">Datos Clasificados por Estación</h5>
+                        ${renderSeriesPorEstacion(evento.series_temporales_por_estacion)}
                         <div class="text-center mt-3">
                             <!-- Botones info arriba -->
                             <button type="button" class="btn btn-info me-2" id="visualizarMapaBtn">Visualizar Mapa</button>
@@ -66,7 +68,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Botón Rechazar
             document.getElementById('rechazarBtn').addEventListener('click', async () => {
-                await tomarSeleccionOpc(evento.id);
+                const usuario = sessionStorage.getItem('usuario');
+                if (!usuario) {
+                    alert('Debe iniciar sesión para realizar esta acción.');
+                    window.location.href = '/index.html';
+                    return;
+                }
+                await tomarSeleccionOpc(evento.id, usuario);
                 eventoSeleccionadoId = null;
                 fetchEventos();
             });
@@ -111,6 +119,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 await fetchEventoPorId(id);
             });
         });
+    }
+
+    // Renderiza las series temporales por estación
+    function renderSeriesPorEstacion(seriesPorEstacion) {
+        if (!seriesPorEstacion || Object.keys(seriesPorEstacion).length === 0) {
+            return `<div class="text-center">No hay datos clasificados por estación.</div>`;
+        }
+        let html = '';
+        for (const [estacion, muestras] of Object.entries(seriesPorEstacion)) {
+            html += `
+                <div class="mb-3 border rounded p-2">
+                    <h6 class="mb-2">${estacion}</h6>
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead>
+                            <tr>
+                                <th>Instante</th>
+                                <th>Velocidad de onda</th>
+                                <th>Frecuencia de onda</th>
+                                <th>Longitud de onda</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            muestras.forEach(m => {
+                html += `
+                    <tr>
+                        <td>${m.instante}</td>
+                        <td>${m.velocidad_onda ?? '-'}</td>
+                        <td>${m.frecuencia_onda ?? '-'}</td>
+                        <td>${m.longitud ?? '-'}</td>
+                    </tr>
+                `;
+            });
+            html += `</tbody></table></div>`;
+        }
+        return html;
     }
 
     // Renderiza las series temporales y sus datos anidados
@@ -174,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <thead>
                     <tr>
                         <th>ID</th>
+                        <th>Nombre</th>
                         <th>Valor</th>
                         <th>Tipo de Dato</th>
                     </tr>
@@ -184,6 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
             html += `
                 <tr>
                     <td>${detalle.id}</td>
+                    <td>${detalle.nombre || '-'}</td>
                     <td>${detalle.valor}</td>
                     <td>${detalle.tipoDeDato || '-'}</td>
                 </tr>
@@ -228,10 +274,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Cambia el estado del evento a un nuevo estado
-    async function tomarSeleccionOpc(id) {
+    async function tomarSeleccionOpc(id, usuario) {
         try {
             const response = await fetch(`${API_URL}/evento/${id}/rechazar`, {
-                method: 'PUT'
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ usuario })
             });
             if (!response.ok) {
                 throw new Error('No se pudo cambiar el estado');
