@@ -36,12 +36,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             <tr><th>Fecha Ocurrencia</th><td>${evento.fechaHoraOcurrencia}</td></tr>
                             <tr><th>Coordenada Epicentro</th><td>${evento.coordenadaEpicentro}</td></tr>
                             <tr><th>Coordenada Hipocentro</th><td>${evento.coordenadaHipocentro}</td></tr>
-                            <tr><th>Alcance</th><td>${evento.alcance || evento.alcance_id}</td></tr>
-                            <tr><th>Origen de Generación</th><td>${evento.origen_de_generacion || evento.origen_de_generacion_id}</td></tr>
-                            <tr><th>Clasificación Sismo</th><td>${evento.clasificacion_sismo || evento.clasificacion_sismo_id}</td></tr>
+                            <tr><th>Alcance</th><td>${evento.alcance || '-'}</td></tr>
+                            <tr><th>Origen de Generación</th><td>${evento.origen_de_generacion || '-'}</td></tr>
+                            <tr><th>Clasificación Sismo</th><td>${evento.clasificacion_sismo || '-'}</td></tr>
                         </table>
                         <h5 class="mb-2">Series Temporales</h5>
                         ${renderSeriesTemporales(evento.series_temporales)}
+                        <h5 class="mb-2">Datos Clasificados por Estación</h5>
+                        ${renderSeriesPorEstacion(evento.series_temporales_por_estacion)}
                         <div class="text-center mt-3">
                             <!-- Botones info arriba -->
                             <button type="button" class="btn btn-info me-2" id="visualizarMapaBtn">Visualizar Mapa</button>
@@ -60,21 +62,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Botón Confirmar
             document.getElementById('confirmarBtn').addEventListener('click', async () => {
-                await cambiarEstadoEvento(evento.id, "Confirmado");
                 eventoSeleccionadoId = null;
                 fetchEventos();
             });
 
             // Botón Rechazar
             document.getElementById('rechazarBtn').addEventListener('click', async () => {
-                await cambiarEstadoEvento(evento.id, "Rechazado");
+                const usuario = sessionStorage.getItem('usuario');
+                if (!usuario) {
+                    alert('Debe iniciar sesión para realizar esta acción.');
+                    window.location.href = '/index.html';
+                    return;
+                }
+                await tomarSeleccionOpc(evento.id, usuario);
                 eventoSeleccionadoId = null;
                 fetchEventos();
             });
 
             // Botón Solicitar Revisión
             document.getElementById('solicitarRevisionBtn').addEventListener('click', async () => {
-                await cambiarEstadoEvento(evento.id, "Pendiente Revision");
                 eventoSeleccionadoId = null;
                 fetchEventos();
             });
@@ -108,11 +114,47 @@ document.addEventListener('DOMContentLoaded', () => {
                 const id = event.target.getAttribute('data-id');
                 eventoSeleccionadoId = id;
                 // Cambia el estado a "Bloqueado"
-                await cambiarEstadoEvento(id, "Bloqueado");
+                await tomarSeleccionES(id);
                 // Trae el evento actualizado y lo muestra
                 await fetchEventoPorId(id);
             });
         });
+    }
+
+    // Renderiza las series temporales por estación
+    function renderSeriesPorEstacion(seriesPorEstacion) {
+        if (!seriesPorEstacion || Object.keys(seriesPorEstacion).length === 0) {
+            return `<div class="text-center">No hay datos clasificados por estación.</div>`;
+        }
+        let html = '';
+        for (const [estacion, muestras] of Object.entries(seriesPorEstacion)) {
+            html += `
+                <div class="mb-3 border rounded p-2">
+                    <h6 class="mb-2">${estacion}</h6>
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead>
+                            <tr>
+                                <th>Instante</th>
+                                <th>Velocidad de onda</th>
+                                <th>Frecuencia de onda</th>
+                                <th>Longitud de onda</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            muestras.forEach(m => {
+                html += `
+                    <tr>
+                        <td>${m.instante}</td>
+                        <td>${m.velocidad_onda ?? '-'}</td>
+                        <td>${m.frecuencia_onda ?? '-'}</td>
+                        <td>${m.longitud ?? '-'}</td>
+                    </tr>
+                `;
+            });
+            html += `</tbody></table></div>`;
+        }
+        return html;
     }
 
     // Renderiza las series temporales y sus datos anidados
@@ -176,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <thead>
                     <tr>
                         <th>ID</th>
+                        <th>Nombre</th>
                         <th>Valor</th>
                         <th>Tipo de Dato</th>
                     </tr>
@@ -186,6 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
             html += `
                 <tr>
                     <td>${detalle.id}</td>
+                    <td>${detalle.nombre || '-'}</td>
                     <td>${detalle.valor}</td>
                     <td>${detalle.tipoDeDato || '-'}</td>
                 </tr>
@@ -195,32 +239,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return html;
     }
 
-    // Trae todos los eventos o el seleccionado si corresponde
+    // Trae todos los eventos
     async function fetchEventos() {
         if (eventoSeleccionadoId) {
             await fetchEventoPorId(eventoSeleccionadoId);
             return;
         }
         try {
-            // Trae ambos estados
-            const [pendientesRes, autodetectadosRes] = await Promise.all([
-                fetch(`${API_URL}/eventos?estado=Pendiente Revision`),
-                fetch(`${API_URL}/eventos?estado=Auto Detectado`)
-            ]);
-            if (!pendientesRes.ok && !autodetectadosRes.ok) {
+            const response = await fetch(`${API_URL}/eventos`);
+            if (!response.ok) {
                 throw new Error('Error al obtener los eventos');
             }
-            const pendientes = pendientesRes.ok ? await pendientesRes.json() : [];
-            const autodetectados = autodetectadosRes.ok ? await autodetectadosRes.json() : [];
-            // Unir ambos arrays
-            const eventos = [...pendientes, ...autodetectados];
+            const eventos = await response.json();
             renderEventos(eventos);
         } catch (error) {
             console.error('Error al cargar los eventos:', error);
         }
     }
 
-    // Trae un evento por ID (aunque cambie de estado)
+    // Trae un evento por ID
     async function fetchEventoPorId(id) {
         try {
             const response = await fetch(`${API_URL}/evento/${id}`);
@@ -237,9 +274,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Cambia el estado del evento a un nuevo estado
-    async function cambiarEstadoEvento(id, nuevoEstado) {
+    async function tomarSeleccionOpc(id, usuario) {
         try {
-            const response = await fetch(`${API_URL}/evento/${id}/cambiar-estado/${encodeURIComponent(nuevoEstado)}`, {
+            const response = await fetch(`${API_URL}/evento/${id}/rechazar`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ usuario })
+            });
+            if (!response.ok) {
+                throw new Error('No se pudo cambiar el estado');
+            }
+        } catch (error) {
+            console.error('Error al cambiar el estado:', error);
+        }
+    }
+    
+    async function tomarSeleccionES(id) {
+        try {
+            const response = await fetch(`${API_URL}/evento/${id}/seleccionar`, {
                 method: 'PUT'
             });
             if (!response.ok) {

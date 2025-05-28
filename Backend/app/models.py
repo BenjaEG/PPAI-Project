@@ -6,7 +6,7 @@ class Estado(db.Model):
     nombre = db.Column(db.String(20), nullable=False)
     ambito = db.Column(db.String(50), nullable=False)
 
-    def to_dict(self):
+    def getDatos(self):
         return {
             "id": self.id,
             "nombre": self.nombre,
@@ -25,7 +25,7 @@ class CambioEstado(db.Model):
     fechaHoraFin = db.Column(db.DateTime)
     estado_id = db.Column(db.Integer, db.ForeignKey('estado.id'), nullable=False)
 
-    def to_dict(self):
+    def getDatos(self):
         return {
             "id": self.id,
             "fechaHoraInicio": self.fechaHoraInicio.isoformat(),
@@ -45,24 +45,30 @@ class Alcance(db.Model):
     nombre = db.Column(db.String(50), nullable=False)
     descripcion = db.Column(db.String(200), nullable=True)
 
-    def to_dict(self):
+    def getDatos(self):
         return {
             "id": self.id,
             "nombre": self.nombre,
             "descripcion": self.descripcion
         }
+    
+    def getNombre(self):
+        return self.nombre
 
 class OrigenDeGeneracion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(50), nullable=False)
     descripcion = db.Column(db.String(200), nullable=True)
 
-    def to_dict(self):
+    def getDatos(self):
         return {
             "id": self.id,
             "nombre": self.nombre,
             "descripcion": self.descripcion
         }
+    
+    def getNombre(self):
+        return self.nombre
 
 class ClasificacionSismo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -70,13 +76,16 @@ class ClasificacionSismo(db.Model):
     kmProfundidadDesde = db.Column(db.Float, nullable=False)
     kmProfundidadHasta = db.Column(db.Float, nullable=False)
 
-    def to_dict(self):
+    def getDatos(self):
         return {
             "id": self.id,
             "nombre": self.nombre,
             "kmProfundidadDesde": self.kmProfundidadDesde,
             "kmProfundidadHasta": self.kmProfundidadHasta
         }
+    
+    def getNombre(self):
+        return self.nombre
 
 class EstacionSismologica(db.Model):
     codigoEstacion = db.Column(db.Integer, primary_key=True)
@@ -103,6 +112,7 @@ class TipoDeDato(db.Model):
 
 class DetalleMuestraSismica(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(50), nullable=False)
     valor = db.Column(db.Float, nullable=False)
     tipoDeDato = db.Column(db.Integer, db.ForeignKey('tipo_de_dato.id'), nullable=False)
     muestra_sismica_id = db.Column(db.Integer, db.ForeignKey('muestra_sismica.id'), nullable=False)
@@ -111,17 +121,11 @@ class DetalleMuestraSismica(db.Model):
         tipo_dato_obj = TipoDeDato.query.get(self.tipoDeDato)
         return {
             "id": self.id,
+            "nombre": self.nombre,
             "valor": self.valor,
             "tipoDeDato": tipo_dato_obj.getDenominacion() if tipo_dato_obj else None,
             "muestra_sismica_id": self.muestra_sismica_id
         }
-    
-    @classmethod
-    def new(cls, valor, tipoDeDato, muestra_sismica_id):
-        obj = cls(valor=valor, tipoDeDato=tipoDeDato, muestra_sismica_id=muestra_sismica_id)
-        db.session.add(obj)
-        db.session.commit()
-        return obj
 
 class MuestraSismica(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -140,13 +144,6 @@ class MuestraSismica(db.Model):
             "fechaHoraMuestra": self.fechaHoraMuestra.isoformat(),
             "detalles": detalles
         }
-    
-    @classmethod 
-    def new(cls, fechaHoraMuestra, serie_temporal_id):
-        obj = cls(fechaHoraMuestra=fechaHoraMuestra, serie_temporal_id=serie_temporal_id)
-        db.session.add(obj)
-        db.session.commit()
-        return obj
 
 class Sismografo(db.Model):
     nroSerie = db.Column(db.Integer, primary_key=True)
@@ -166,24 +163,13 @@ class Sismografo(db.Model):
             }
         return None
 
-    @classmethod
-    def new(cls, identificadorSismografo, nroSerie, fechaAdquisicion):
-        obj = cls(
-            identificadorSismografo=identificadorSismografo,
-            nroSerie=nroSerie,
-            fechaAdquisicion=fechaAdquisicion
-        )
-        db.session.add(obj)
-        db.session.commit()
-        return obj
-
 class SerieTemporal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     fechaHoraInicioRegistroMuestras = db.Column(db.DateTime, nullable=True, default=datetime.now)
     fechaHoraInicio = db.Column(db.DateTime, nullable=True, default=datetime.now)
     frecuenciaMuestreo = db.Column(db.Float, nullable=False)
     sismografo_nroSerie = db.Column(db.Integer, db.ForeignKey('sismografo.nroSerie'), nullable=False)
-    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento_sismico.id'), nullable=False)
     coleccionMuestrasSismicas = db.relationship('MuestraSismica', backref='serie_temporal', lazy=True)
 
     def getDatos(self):
@@ -198,21 +184,8 @@ class SerieTemporal(db.Model):
                 "estacion": Sismografo.query.get(self.sismografo_nroSerie).conocerEstacion() if self.sismografo_nroSerie else None
             },  
         }
-    
-    @classmethod
-    def new(cls, fechaHoraInicioRegistroMuestras, fechaHoraInicio, frecuenciaMuestreo, sismografo_nroSerie, evento_id):
-        obj = cls(
-            fechaHoraInicioRegistroMuestras=fechaHoraInicioRegistroMuestras,
-            fechaHoraInicio=fechaHoraInicio,
-            frecuenciaMuestreo=frecuenciaMuestreo,
-            sismografo_nroSerie=sismografo_nroSerie,
-            evento_id=evento_id
-        )
-        db.session.add(obj)
-        db.session.commit()
-        return obj
 
-class Evento(db.Model):
+class EventoSismico(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     estado_id = db.Column(db.Integer, db.ForeignKey('estado.id'), nullable=False)
     cambio_estado_id = db.Column(db.Integer, db.ForeignKey('cambio_estado.id'))
@@ -227,21 +200,6 @@ class Evento(db.Model):
     coleccionSeriesTemporales = db.relationship('SerieTemporal', backref='evento', lazy=True)
     fechaHoraRevision = db.Column(db.DateTime, nullable=True)
     responsableRevision = db.Column(db.String(100), nullable=True)
-
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "estado_id": self.estado_id,
-            "cambio_estado_id": self.cambio_estado_id,
-            "valorMagnitud": self.valorMagnitud,
-            "coordenadaEpicentro": self.coordenadaEpicentro,
-            "coordenadaHipocentro": self.coordenadaHipocentro,
-            "fechaHoraOcurrencia": self.fechaHoraOcurrencia.isoformat(),
-            "fechaHoraFin": self.fechaHoraFin.isoformat(),
-            "alcance_id": self.alcance_id,
-            "origen_de_generacion_id": self.origen_de_generacion_id,
-            "clasificacion_sismo_id": self.clasificacion_sismo_id
-        }
     
     def bloquear(self):
         if self.cambio_estado_id:
@@ -254,32 +212,30 @@ class Evento(db.Model):
         self.cambio_estado_id = cambio.id
         db.session.commit()
 
-    def rechazar(self):
+    def rechazar(self, usuario):
         if self.cambio_estado_id:
             cambio_anterior = CambioEstado.query.get(self.cambio_estado_id)
             if cambio_anterior and not cambio_anterior.fechaHoraFin:
                 cambio_anterior.fechaHoraFin = datetime.now()
                 db.session.commit()
         cambio = CambioEstado.new(datetime.now(), 3)
+        self.setFechaHoraRevision()
+        self.setResponsableRevision(usuario)
         self.estado_id = 3
         self.cambio_estado_id = cambio.id
         db.session.commit()
     
     def getAlcance(self):
         alcance = Alcance.query.get(self.alcance_id)
-        return alcance.nombre if alcance else None
+        return alcance.getNombre() if alcance else None
 
     def getOrigenDeGeneracion(self):
         origen = OrigenDeGeneracion.query.get(self.origen_de_generacion_id)
-        return origen.nombre if origen else None
-    
+        return origen.getNombre() if origen else None
+
     def clasificacionSismo(self):
         clasificacion = ClasificacionSismo.query.get(self.clasificacion_sismo_id)
-        return clasificacion.nombre if clasificacion else None
-
-    def getEstado(self):
-        estado = Estado.query.get(self.estado_id)
-        return estado.nombre if estado else None
+        return clasificacion.getNombre() if clasificacion else None
     
     def esPendienteDeRevision(self):
         estado = Estado.query.get(self.estado_id)
@@ -301,3 +257,11 @@ class Evento(db.Model):
     
     def buscarDatosSeriesTemporales(self):
         return [serie.getDatos() for serie in self.coleccionSeriesTemporales]
+    
+    def setResponsableRevision(self, usuario):
+        self.responsableRevision = usuario
+        db.session.commit()
+
+    def setFechaHoraRevision(self):
+        self.fechaHoraRevision = datetime.now()
+        db.session.commit()

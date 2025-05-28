@@ -2,7 +2,7 @@ from . import db
 from .models import (
     Estado,
     CambioEstado,
-    Evento,
+    EventoSismico,
     Alcance,
     OrigenDeGeneracion,
     ClasificacionSismo,
@@ -98,7 +98,7 @@ def bulk_create_eventos():
 
     # Eventos
     eventos = [
-        Evento(
+        EventoSismico(
             estado_id=e["estado_id"],
             cambio_estado_id=e["cambio_estado_id"],
             valorMagnitud=e["valorMagnitud"],
@@ -163,7 +163,7 @@ def bulk_create_eventos():
     muestras_sismicas = []
     detalles_muestras = []
 
-    eventos = Evento.query.all()
+    eventos = EventoSismico.query.all()
     sismografos_objs = Sismografo.query.all()
 
     for evento in eventos:
@@ -188,9 +188,16 @@ def bulk_create_eventos():
             db.session.commit()
             muestras_sismicas.append(muestra)
 
-            for tipo_dato in ["1", "2", "3"]:
+            for tipo_dato in [1, 2, 3]:
+                if tipo_dato == 1:
+                    nombre = "Velocidad de onda"
+                elif tipo_dato == 2:
+                    nombre = "Frecuencia de onda"
+                elif tipo_dato == 3:
+                    nombre = "Longitud de onda"
                 detalle = DetalleMuestraSismica(
                     valor=10.0 + st_num,
+                    nombre=nombre,
                     tipoDeDato=tipo_dato,
                     muestra_sismica_id=muestra.id
                 )

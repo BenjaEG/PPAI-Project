@@ -1,0 +1,11 @@
+body {
+    background: linear-gradient(135deg, #e0e7ff 0%, #fff 100%);
+}
+
+.card {
+    border-radius: 1rem;
+}
+
+#loginError {
+    font-size: 0.95rem;
+}
