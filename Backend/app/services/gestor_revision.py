@@ -5,15 +5,16 @@ class GestorRevisionEventos:
     def __init__(self):
         pass
 
-    def buscarEventosSismicos(self, estado_nombre=None):
-        eventos = Evento.query.order_by(Evento.fechaHoraOcurrencia.desc()).all()
-        if estado_nombre is not None:
-            if estado_nombre.strip().lower() == "pendiente revision":
-                return [evento.getDatos() for evento in eventos if evento.esPendienteDeRevision()]
-            elif estado_nombre.strip().lower() == "auto detectado":
-                return [evento.getDatos() for evento in eventos if evento.esAutoDetectado()]
-            else:
-                return []
+    def ordenarES(self, eventos):
+        return sorted(eventos, key=lambda x: x.fechaHoraOcurrencia, reverse=True)
+
+    def buscarEventosSismicos(self):
+        eventos = Evento.query.all()
+        eventos = [
+            evento for evento in eventos
+            if evento.esPendienteDeRevision() or evento.esAutoDetectado()
+        ]
+        eventos = self.ordenarES(eventos)
         return [evento.getDatos() for evento in eventos]
     
     def buscarEstadoRechazado(self, evento_id):

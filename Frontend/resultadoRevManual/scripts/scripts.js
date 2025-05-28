@@ -60,21 +60,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Botón Confirmar
             document.getElementById('confirmarBtn').addEventListener('click', async () => {
-                await cambiarEstadoEvento(evento.id, "Confirmado");
                 eventoSeleccionadoId = null;
                 fetchEventos();
             });
 
             // Botón Rechazar
             document.getElementById('rechazarBtn').addEventListener('click', async () => {
-                await cambiarEstadoEvento(evento.id, "Rechazado");
+                await tomarSeleccionOpc(evento.id);
                 eventoSeleccionadoId = null;
                 fetchEventos();
             });
 
             // Botón Solicitar Revisión
             document.getElementById('solicitarRevisionBtn').addEventListener('click', async () => {
-                await cambiarEstadoEvento(evento.id, "Pendiente Revision");
                 eventoSeleccionadoId = null;
                 fetchEventos();
             });
@@ -108,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const id = event.target.getAttribute('data-id');
                 eventoSeleccionadoId = id;
                 // Cambia el estado a "Bloqueado"
-                await cambiarEstadoEvento(id, "Bloqueado");
+                await tomarSeleccionES(id);
                 // Trae el evento actualizado y lo muestra
                 await fetchEventoPorId(id);
             });
@@ -195,32 +193,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return html;
     }
 
-    // Trae todos los eventos o el seleccionado si corresponde
+    // Trae todos los eventos
     async function fetchEventos() {
         if (eventoSeleccionadoId) {
             await fetchEventoPorId(eventoSeleccionadoId);
             return;
         }
         try {
-            // Trae ambos estados
-            const [pendientesRes, autodetectadosRes] = await Promise.all([
-                fetch(`${API_URL}/eventos?estado=Pendiente Revision`),
-                fetch(`${API_URL}/eventos?estado=Auto Detectado`)
-            ]);
-            if (!pendientesRes.ok && !autodetectadosRes.ok) {
+            const response = await fetch(`${API_URL}/eventos`);
+            if (!response.ok) {
                 throw new Error('Error al obtener los eventos');
             }
-            const pendientes = pendientesRes.ok ? await pendientesRes.json() : [];
-            const autodetectados = autodetectadosRes.ok ? await autodetectadosRes.json() : [];
-            // Unir ambos arrays
-            const eventos = [...pendientes, ...autodetectados];
+            const eventos = await response.json();
             renderEventos(eventos);
         } catch (error) {
             console.error('Error al cargar los eventos:', error);
         }
     }
 
-    // Trae un evento por ID (aunque cambie de estado)
+    // Trae un evento por ID
     async function fetchEventoPorId(id) {
         try {
             const response = await fetch(`${API_URL}/evento/${id}`);
@@ -237,9 +228,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Cambia el estado del evento a un nuevo estado
-    async function cambiarEstadoEvento(id, nuevoEstado) {
+    async function tomarSeleccionOpc(id) {
         try {
-            const response = await fetch(`${API_URL}/evento/${id}/cambiar-estado/${encodeURIComponent(nuevoEstado)}`, {
+            const response = await fetch(`${API_URL}/evento/${id}/rechazar`, {
+                method: 'PUT'
+            });
+            if (!response.ok) {
+                throw new Error('No se pudo cambiar el estado');
+            }
+        } catch (error) {
+            console.error('Error al cambiar el estado:', error);
+        }
+    }
+    
+    async function tomarSeleccionES(id) {
+        try {
+            const response = await fetch(`${API_URL}/evento/${id}/seleccionar`, {
                 method: 'PUT'
             });
             if (!response.ok) {

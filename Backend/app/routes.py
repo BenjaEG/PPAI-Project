@@ -8,12 +8,11 @@ from datetime import datetime
 
 bp = Blueprint("api", __name__)
 
+gestor = GestorRevisionEventos()
 
 @bp.route("/eventos", methods=["GET"])
-def obtener_eventos():
-    estado_nombre = request.args.get("estado", type=str)
-    gestor = GestorRevisionEventos()
-    eventos = gestor.buscarEventosSismicos(estado_nombre)
+def registroRevisionManual():
+    eventos = gestor.buscarEventosSismicos()
     return jsonify(eventos), 200
 
 @bp.route("/revisar-evento/<int:evento_id>", methods=["POST"])
@@ -46,24 +45,24 @@ def revisar_evento(evento_id):
     db.session.commit()
     return jsonify(evento.to_dict()), 200
 
-@bp.route("/evento/<int:evento_id>/cambiar-estado/<string:nuevo_estado>", methods=["PUT"])
-def cambiar_estado_evento(evento_id, nuevo_estado):
-    gestor = GestorRevisionEventos()
-    if nuevo_estado.lower() == "bloqueado":
-        evento = gestor.buscarEstadoBloqueado(evento_id)
-    elif nuevo_estado.lower() == "rechazado":
-        evento = gestor.buscarEstadoRechazado(evento_id)
-    else:
-        return jsonify({"error": "Estado no encontrado"}), 400
+@bp.route("/evento/<int:evento_id>/seleccionar", methods=["PUT"])
+def tomarSeleccionES(evento_id):
+    evento = gestor.buscarEstadoBloqueado(evento_id)
+    if not evento:
+        return jsonify({"error": "Evento no encontrado"}), 404
 
+    return jsonify(evento.getDatos()), 200
+
+@bp.route("/evento/<int:evento_id>/rechazar", methods=["PUT"])
+def tomarSeleccionOpc(evento_id):
+    evento = gestor.buscarEstadoRechazado(evento_id)
     if not evento:
         return jsonify({"error": "Evento no encontrado"}), 404
 
     return jsonify(evento.getDatos()), 200
 
 @bp.route("/evento/<int:evento_id>", methods=["GET"])
-def buscarDatosSismicos(evento_id):
-    gestor = GestorRevisionEventos()
+def datosSismicos(evento_id):
     datos = gestor.buscarDatosSismicos(evento_id)
     if not datos:
         return jsonify({"error": "Evento no encontrado"}), 404
