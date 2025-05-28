@@ -1,14 +1,25 @@
 from app.models import EventoSismico, db
+from datetime import datetime
 
 class GestorRevisionEventos:
+    usuario = None
+
     def __init__(self):
         pass
 
-    def bloquearES(self, evento_id):
+    def buscarEmpleadoLogueado(self):
+        usuario = Sesion().conocerEmpleado()
+        return usuario
+ 
+    def getFechaHora(self):
+        return datetime.now()
+
+    def bloquearES(self, evento_id, usuario):
         evento = EventoSismico.query.get(evento_id)
         if not evento:
             return None
-        evento.bloquear()
+        fecha_hora = self.getFechaHora()
+        evento.bloquear(usuario, fecha_hora)
         db.session.commit()
         return evento
 
@@ -24,19 +35,23 @@ class GestorRevisionEventos:
         eventos = self.ordenarES(eventos)
         return [evento.getDatos() for evento in eventos]
     
-    def buscarEstadoRechazado(self, evento_id, usuario):
+    def buscarEstadoRechazado(self, evento_id):
+        usuario = self.usuario
         evento = EventoSismico.query.get(evento_id)
         errores = self.validarRequisitos(evento)
         if errores:
             return {"errores": errores}
         if not evento:
             return None
-        evento.rechazar(usuario)
+        fecha_hora = self.getFechaHora()
+        evento.rechazar(usuario, fecha_hora)
         db.session.commit()
         return evento
 
     def buscarEstadoBloqueado(self, evento_id):
-        evento = self.bloquearES(evento_id)
+        self.usuario = self.buscarEmpleadoLogueado()
+        usuario = self.usuario
+        evento = self.bloquearES(evento_id, usuario)
         return evento
 
     def buscarDatosSismicos(self, evento_id):
@@ -113,3 +128,32 @@ class GestorRevisionEventos:
 
     def finCU(self):
         pass
+
+class Usuario:
+    usuario_actual = None
+
+    def __init__(self, nombre):
+        self.nombre = nombre
+
+    def getNombre(self):
+        return self.nombre
+
+    @classmethod
+    def setUsuarioActual(cls, usuario):
+        cls.usuario_actual = usuario
+
+    @classmethod
+    def conocerEmpleado(cls):
+        if cls.usuario_actual:
+            return cls.usuario_actual.getNombre()
+        return None
+    
+class Sesion:
+    def __init__(self):
+        pass
+
+    def conocerEmpleado(self):
+        usuario = Usuario.conocerEmpleado()
+        if not usuario:
+            raise ValueError("No hay un usuario conectado.")
+        return usuario

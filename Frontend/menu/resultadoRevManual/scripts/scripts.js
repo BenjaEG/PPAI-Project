@@ -110,11 +110,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectButtons = document.querySelectorAll('.select-button');
         selectButtons.forEach(button => {
             button.addEventListener('click', async (event) => {
+                const usuario = sessionStorage.getItem('usuario');
+                if (!usuario) {
+                    alert('Debe iniciar sesión para realizar esta acción.');
+                    window.location.href = '/index.html';
+                    return;
+                }
                 event.preventDefault();
                 const id = event.target.getAttribute('data-id');
                 eventoSeleccionadoId = id;
                 // Cambia el estado a "Bloqueado"
-                await tomarSeleccionES(id);
+                await tomarSeleccionES(id, usuario);
                 // Trae el evento actualizado y lo muestra
                 await fetchEventoPorId(id);
             });
@@ -289,10 +295,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    async function tomarSeleccionES(id) {
+    async function tomarSeleccionES(id, usuario) {
         try {
             const response = await fetch(`${API_URL}/evento/${id}/seleccionar`, {
-                method: 'PUT'
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ usuario })
             });
             if (!response.ok) {
                 throw new Error('No se pudo cambiar el estado');

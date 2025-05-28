@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from .services.gestor_revision import GestorRevisionEventos
+from .services.gestor_revision import GestorRevisionEventos, Usuario
 from .models import (
     EventoSismico,
 )
@@ -15,38 +15,14 @@ def registroRevisionManual():
     eventos = gestor.buscarEventosSismicos()
     return jsonify(eventos), 200
 
-@bp.route("/revisar-evento/<int:evento_id>", methods=["POST"])
-def revisar_evento(evento_id):
-    data = request.json
-    accion = data.get("accion")
-    usuario = data.get("usuario")
-
-    evento = EventoSismico.query.get(evento_id)
-    if not evento:
-        return jsonify({"error": "Evento no encontrado"}), 404
-
-    if evento.estado != "auto_detectado":
-        return jsonify({"error": "Evento ya revisado"}), 400
-
-    if accion not in ["confirmar", "rechazar", "derivar"]:
-        return jsonify({"error": "Acción inválida"}), 400
-
-    if accion == "confirmar":
-        evento.estado = "confirmado"
-    elif accion == "rechazar":
-        evento.estado = "rechazado"
-    else:
-        evento.estado = "derivado"
-
-    evento.usuario_revision = usuario
-    evento.accion_revision = accion
-    evento.fecha_revision = datetime.now()
-
-    db.session.commit()
-    return jsonify(evento.to_dict()), 200
-
 @bp.route("/evento/<int:evento_id>/seleccionar", methods=["PUT"])
 def tomarSeleccionES(evento_id):
+    data = request.get_json()
+    user = data.get("usuario") if data else None
+    if not user:
+        return jsonify({"error": "Usuario no proporcionado"}), 400
+    usuario = Usuario(user)
+    Usuario.setUsuarioActual(usuario)
     evento = gestor.buscarEstadoBloqueado(evento_id)
     if not evento:
         return jsonify({"error": "Evento no encontrado"}), 404
@@ -56,10 +32,12 @@ def tomarSeleccionES(evento_id):
 @bp.route("/evento/<int:evento_id>/rechazar", methods=["PUT"])
 def tomarSeleccionOpc(evento_id):
     data = request.get_json()
-    usuario = data.get("usuario") if data else None
-    if not usuario:
+    user = data.get("usuario") if data else None
+    if not user:
         return jsonify({"error": "Usuario no proporcionado"}), 400
-    evento = gestor.buscarEstadoRechazado(evento_id, usuario)
+    usuario = Usuario(user)
+    Usuario.setUsuarioActual(usuario)
+    evento = gestor.buscarEstadoRechazado(evento_id)
     if not evento:
         return jsonify({"error": "Evento no encontrado"}), 404
     return jsonify(evento.getDatos()), 200

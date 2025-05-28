@@ -23,6 +23,7 @@ class CambioEstado(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     fechaHoraInicio = db.Column(db.DateTime, nullable=False, default=datetime.now)
     fechaHoraFin = db.Column(db.DateTime)
+    responsableRevision = db.Column(db.String(100), nullable=False, default="Sistema")
     estado_id = db.Column(db.Integer, db.ForeignKey('estado.id'), nullable=False)
 
     def getDatos(self):
@@ -34,8 +35,8 @@ class CambioEstado(db.Model):
         }
     
     @classmethod
-    def new(cls, fechaHoraInicio, estado_id):
-        obj = cls(fechaHoraInicio=fechaHoraInicio, estado_id=estado_id)
+    def new(cls, fechaHoraInicio, estado_id, responsableRevision="Sistema"):
+        obj = cls(fechaHoraInicio=fechaHoraInicio, estado_id=estado_id, responsableRevision=responsableRevision)
         db.session.add(obj)
         db.session.commit()
         return obj
@@ -201,25 +202,25 @@ class EventoSismico(db.Model):
     fechaHoraRevision = db.Column(db.DateTime, nullable=True)
     responsableRevision = db.Column(db.String(100), nullable=True)
     
-    def bloquear(self):
+    def bloquear(self, usuario, fecha_hora):
         if self.cambio_estado_id:
             cambio_anterior = CambioEstado.query.get(self.cambio_estado_id)
             if cambio_anterior and not cambio_anterior.fechaHoraFin:
-                cambio_anterior.fechaHoraFin = datetime.now()
+                cambio_anterior.fechaHoraFin = fecha_hora
                 db.session.commit()
-        cambio = CambioEstado.new(datetime.now(), 4)
+        cambio = CambioEstado.new(fecha_hora, 4, usuario)
         self.estado_id = 4
         self.cambio_estado_id = cambio.id
         db.session.commit()
 
-    def rechazar(self, usuario):
+    def rechazar(self, usuario, fecha_hora):
         if self.cambio_estado_id:
             cambio_anterior = CambioEstado.query.get(self.cambio_estado_id)
             if cambio_anterior and not cambio_anterior.fechaHoraFin:
-                cambio_anterior.fechaHoraFin = datetime.now()
+                cambio_anterior.fechaHoraFin = fecha_hora
                 db.session.commit()
-        cambio = CambioEstado.new(datetime.now(), 3)
-        self.setFechaHoraRevision()
+        cambio = CambioEstado.new(fecha_hora, 3, usuario)
+        self.setFechaHoraRevision(fecha_hora)
         self.setResponsableRevision(usuario)
         self.estado_id = 3
         self.cambio_estado_id = cambio.id
@@ -262,6 +263,6 @@ class EventoSismico(db.Model):
         self.responsableRevision = usuario
         db.session.commit()
 
-    def setFechaHoraRevision(self):
-        self.fechaHoraRevision = datetime.now()
+    def setFechaHoraRevision(self, fecha_hora):
+        self.fechaHoraRevision = fecha_hora
         db.session.commit()
