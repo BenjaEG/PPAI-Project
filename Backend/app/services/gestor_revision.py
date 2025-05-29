@@ -2,10 +2,8 @@ from app.models import EventoSismico, db, Estado
 from datetime import datetime
 
 class GestorRevisionEventos:
-    usuario = None
-
     def __init__(self):
-        pass
+        self.usuario = None
 
     def tomarSeleccionES(self, evento_id):
         return self.buscarEstadoBloqueado(evento_id)
@@ -116,8 +114,9 @@ class GestorRevisionEventos:
                 break
         if not estado_bloqueado_id:
             return None
-        evento = self.bloquearES(evento_id, usuario, estado_bloqueado_id)
-        return evento
+        self.bloquearES(evento_id, usuario, estado_bloqueado_id)
+        datos = self.buscarDatosSismicos(evento_id)
+        return datos
 
     def buscarDatosSismicos(self, evento_id):
         evento = EventoSismico.query.get(evento_id)
@@ -130,7 +129,7 @@ class GestorRevisionEventos:
         datos["series_temporales"] = evento.buscarDatosSeriesTemporales()
         # Clasificar series por estación y reemplazar en el dict
         datos["series_temporales_por_estacion"] = self.clasificarPorEstacion(datos)
-        self.llamarCUGenerarSismoGrama()
+        self.llamarCUGenerarSismoGrama(datos)
         return datos
 
     def clasificarPorEstacion(self, datos):
@@ -175,7 +174,7 @@ class GestorRevisionEventos:
 
         return series_por_estacion
 
-    def llamarCUGenerarSismoGrama(self):
+    def llamarCUGenerarSismoGrama(self, datos):
         pass
 
     def validarRequisitos(self, evento):

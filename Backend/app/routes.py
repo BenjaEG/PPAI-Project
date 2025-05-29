@@ -20,11 +20,11 @@ def tomarSeleccionES(evento_id):
         return jsonify({"error": "Usuario no proporcionado"}), 400
     usuario = Usuario(user)
     Usuario.setUsuarioActual(usuario)
-    evento = gestor.buscarEstadoBloqueado(evento_id)
-    if not evento:
+    datos = gestor.buscarEstadoBloqueado(evento_id)
+    if not datos:
         return jsonify({"error": "Evento no encontrado"}), 404
 
-    return jsonify(evento.getDatos()), 200
+    return jsonify(datos), 200
 
 @bp.route("/evento/<int:evento_id>/opcion/<string:opcion>", methods=["PUT"])
 def tomarOpcEvento(evento_id, opcion):
@@ -41,6 +41,13 @@ def tomarOpcEvento(evento_id, opcion):
 
 @bp.route("/evento/<int:evento_id>", methods=["GET"])
 def datosSismicos(evento_id):
+    datos = gestor.buscarDatosSismicos(evento_id)
+    if not datos:
+        return jsonify({"error": "Evento no encontrado"}), 404
+    return jsonify(datos), 200
+
+@bp.route("/evento/<int:evento_id>/datossismicos", methods=["GET"])
+def datosSismicosEvento(evento_id):
     datos = gestor.buscarDatosSismicos(evento_id)
     if not datos:
         return jsonify({"error": "Evento no encontrado"}), 404
