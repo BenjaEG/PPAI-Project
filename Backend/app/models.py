@@ -13,6 +13,22 @@ class Estado(db.Model):
             "ambito": self.ambito
         }
     
+    def esBloqueado(self):
+        if self.nombre.strip().lower().replace("_", " ") == "bloqueado":
+            return self.id
+    
+    def esRechazado(self):
+        if self.nombre.strip().lower().replace("_", " ") == "rechazado":
+            return self.id
+    
+    def esDerivado(self):
+        if self.nombre.strip().lower().replace("_", " ") == "derivado":
+            return self.id
+    
+    def esConfirmado(self):
+        if self.nombre.strip().lower().replace("_", " ") == "confirmado":
+            return self.id
+
     def esAutoDetectado(self):
         return self.nombre.strip().lower().replace("_", " ") == "auto detectado"
 
@@ -202,27 +218,53 @@ class EventoSismico(db.Model):
     fechaHoraRevision = db.Column(db.DateTime, nullable=True)
     responsableRevision = db.Column(db.String(100), nullable=True)
     
-    def bloquear(self, usuario, fecha_hora):
+    def bloquear(self, usuario, fecha_hora, estado_id):
         if self.cambio_estado_id:
             cambio_anterior = CambioEstado.query.get(self.cambio_estado_id)
             if cambio_anterior and not cambio_anterior.fechaHoraFin:
                 cambio_anterior.fechaHoraFin = fecha_hora
                 db.session.commit()
-        cambio = CambioEstado.new(fecha_hora, 4, usuario)
-        self.estado_id = 4
+        cambio = CambioEstado.new(fecha_hora, estado_id, usuario)
+        self.estado_id = estado_id
         self.cambio_estado_id = cambio.id
         db.session.commit()
 
-    def rechazar(self, usuario, fecha_hora):
+    def confirmar(self, usuario, fecha_hora, estado_id):
         if self.cambio_estado_id:
             cambio_anterior = CambioEstado.query.get(self.cambio_estado_id)
             if cambio_anterior and not cambio_anterior.fechaHoraFin:
                 cambio_anterior.fechaHoraFin = fecha_hora
                 db.session.commit()
-        cambio = CambioEstado.new(fecha_hora, 3, usuario)
+        cambio = CambioEstado.new(fecha_hora, estado_id, usuario)
         self.setFechaHoraRevision(fecha_hora)
         self.setResponsableRevision(usuario)
-        self.estado_id = 3
+        self.estado_id = estado_id
+        self.cambio_estado_id = cambio.id
+        db.session.commit()
+    
+    def solicitarRevision(self, usuario, fecha_hora, estado_id):
+        if self.cambio_estado_id:
+            cambio_anterior = CambioEstado.query.get(self.cambio_estado_id)
+            if cambio_anterior and not cambio_anterior.fechaHoraFin:
+                cambio_anterior.fechaHoraFin = fecha_hora
+                db.session.commit()
+        cambio = CambioEstado.new(fecha_hora, estado_id, usuario)
+        self.setFechaHoraRevision(fecha_hora)
+        self.setResponsableRevision(usuario)
+        self.estado_id = estado_id
+        self.cambio_estado_id = cambio.id
+        db.session.commit()
+
+    def rechazar(self, usuario, fecha_hora, estado_id):
+        if self.cambio_estado_id:
+            cambio_anterior = CambioEstado.query.get(self.cambio_estado_id)
+            if cambio_anterior and not cambio_anterior.fechaHoraFin:
+                cambio_anterior.fechaHoraFin = fecha_hora
+                db.session.commit()
+        cambio = CambioEstado.new(fecha_hora, estado_id, usuario)
+        self.setFechaHoraRevision(fecha_hora)
+        self.setResponsableRevision(usuario)
+        self.estado_id = estado_id
         self.cambio_estado_id = cambio.id
         db.session.commit()
     

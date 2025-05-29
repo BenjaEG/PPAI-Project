@@ -1,11 +1,25 @@
-let eventoSeleccionadoId = null;
+const PantallaRegistroResultadoRevisionManual = {
+    API_URL: 'http://localhost:5000',
+    eventoSeleccionadoId: null,
 
-document.addEventListener('DOMContentLoaded', () => {
+    iniciar() {
+        document.addEventListener('DOMContentLoaded', () => {
+            this.mostrarEventosPendientes();
+        });
+    },
 
-    const API_URL = 'http://192.168.0.194:5000';
+    async mostrarEventosPendientes() {
+        try {
+            const response = await fetch(`${this.API_URL}/eventos`);
+            if (!response.ok) throw new Error('Error al obtener los eventos');
+            const eventos = await response.json();
+            this.mostrarListaEventos(eventos);
+        } catch (error) {
+            this.mostrarError('Error al cargar los eventos.');
+        }
+    },
 
-    // Renderiza la tabla de eventos o el detalle de un evento
-    function renderEventos(eventos) {
+    mostrarListaEventos(eventos) {
         const eventosContainer = document.getElementById('eventosContainer');
         const tablaCabecera = document.getElementById('tablaCabecera');
         eventosContainer.innerHTML = '';
@@ -13,84 +27,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (eventos.length === 0) {
             eventosContainer.innerHTML = `
                 <tr>
-                    <td colspan="9" class="text-center">No se encontraron eventos.</td>
+                    <td colspan="6" class="text-center">No se encontraron eventos.</td>
                 </tr>
             `;
             if (tablaCabecera) tablaCabecera.style.display = '';
             return;
         }
 
-        // Si hay solo uno y está seleccionado, mostrar todos los datos en detalle
-        if (eventos.length === 1 && eventoSeleccionadoId == eventos[0].id) {
-            const evento = eventos[0];
-            if (tablaCabecera) tablaCabecera.style.display = 'none';
+        if (tablaCabecera) tablaCabecera.style.display = '';
 
-            // Tabla principal de datos del evento
-            let html = `
-                <tr>
-                    <td colspan="2" class="text-center">
-                        <table class="table table-bordered w-auto mx-auto mb-4">
-                            <tr><th>ID</th><td>${evento.id}</td></tr>
-                            <tr><th>Magnitud</th><td>${evento.valorMagnitud}</td></tr>
-                            <tr><th>Fecha Fin</th><td>${evento.fechaHoraFin}</td></tr>
-                            <tr><th>Fecha Ocurrencia</th><td>${evento.fechaHoraOcurrencia}</td></tr>
-                            <tr><th>Coordenada Epicentro</th><td>${evento.coordenadaEpicentro}</td></tr>
-                            <tr><th>Coordenada Hipocentro</th><td>${evento.coordenadaHipocentro}</td></tr>
-                            <tr><th>Alcance</th><td>${evento.alcance || '-'}</td></tr>
-                            <tr><th>Origen de Generación</th><td>${evento.origen_de_generacion || '-'}</td></tr>
-                            <tr><th>Clasificación Sismo</th><td>${evento.clasificacion_sismo || '-'}</td></tr>
-                        </table>
-                        <h5 class="mb-2">Series Temporales</h5>
-                        ${renderSeriesTemporales(evento.series_temporales)}
-                        <h5 class="mb-2">Datos Clasificados por Estación</h5>
-                        ${renderSeriesPorEstacion(evento.series_temporales_por_estacion)}
-                        <div class="text-center mt-3">
-                            <!-- Botones info arriba -->
-                            <button type="button" class="btn btn-info me-2" id="visualizarMapaBtn">Visualizar Mapa</button>
-                            <button type="button" class="btn btn-info me-2" id="modificarDatosBtn">Modificar Datos</button>
-                        </div>
-                        <div class="text-center mt-3">
-                            <!-- Botones de acción debajo -->
-                            <button type="button" class="btn btn-success me-2" id="confirmarBtn">Confirmar</button>
-                            <button type="button" class="btn btn-danger me-2" id="rechazarBtn">Rechazar</button>
-                            <button type="button" class="btn btn-warning me-2" id="solicitarRevisionBtn">Solicitar Revisión</button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-            eventosContainer.innerHTML = html;
-
-            // Botón Confirmar
-            document.getElementById('confirmarBtn').addEventListener('click', async () => {
-                eventoSeleccionadoId = null;
-                fetchEventos();
-            });
-
-            // Botón Rechazar
-            document.getElementById('rechazarBtn').addEventListener('click', async () => {
-                const usuario = sessionStorage.getItem('usuario');
-                if (!usuario) {
-                    alert('Debe iniciar sesión para realizar esta acción.');
-                    window.location.href = '/index.html';
-                    return;
-                }
-                await tomarSeleccionOpc(evento.id, usuario);
-                eventoSeleccionadoId = null;
-                fetchEventos();
-            });
-
-            // Botón Solicitar Revisión
-            document.getElementById('solicitarRevisionBtn').addEventListener('click', async () => {
-                eventoSeleccionadoId = null;
-                fetchEventos();
-            });
-
-            return;
-        } else {
-            if (tablaCabecera) tablaCabecera.style.display = '';
-        }
-
-        // Tabla de lista de eventos
         eventos.forEach(evento => {
             const fila = document.createElement('tr');
             fila.innerHTML = `
@@ -106,211 +51,116 @@ document.addEventListener('DOMContentLoaded', () => {
             eventosContainer.appendChild(fila);
         });
 
-        // Botones seleccionar
-        const selectButtons = document.querySelectorAll('.select-button');
-        selectButtons.forEach(button => {
-            button.addEventListener('click', async (event) => {
+        document.querySelectorAll('.select-button').forEach(button => {
+            button.addEventListener('click', (event) => {
                 const usuario = sessionStorage.getItem('usuario');
                 if (!usuario) {
                     alert('Debe iniciar sesión para realizar esta acción.');
                     window.location.href = '/index.html';
                     return;
                 }
-                event.preventDefault();
                 const id = event.target.getAttribute('data-id');
-                eventoSeleccionadoId = id;
-                // Cambia el estado a "Bloqueado"
-                await tomarSeleccionES(id, usuario);
-                // Trae el evento actualizado y lo muestra
-                await fetchEventoPorId(id);
+                this.tomarSeleccionEvento(id, usuario);
             });
         });
-    }
+    },
 
-    // Renderiza las series temporales por estación
-    function renderSeriesPorEstacion(seriesPorEstacion) {
-        if (!seriesPorEstacion || Object.keys(seriesPorEstacion).length === 0) {
-            return `<div class="text-center">No hay datos clasificados por estación.</div>`;
+    async tomarSeleccionEvento(id, usuario) {
+        try {
+            await this.solicitarBloqueoEvento(id, usuario);
+            this.eventoSeleccionadoId = id;
+            await this.mostrarDatosBasicosEvento(id);
+        } catch (error) {
+            this.mostrarError('No se pudo seleccionar el evento.');
         }
-        let html = '';
-        for (const [estacion, muestras] of Object.entries(seriesPorEstacion)) {
-            html += `
-                <div class="mb-3 border rounded p-2">
-                    <h6 class="mb-2">${estacion}</h6>
-                    <table class="table table-sm table-bordered mb-0">
-                        <thead>
-                            <tr>
-                                <th>Instante</th>
-                                <th>Velocidad de onda</th>
-                                <th>Frecuencia de onda</th>
-                                <th>Longitud de onda</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-            muestras.forEach(m => {
-                html += `
-                    <tr>
-                        <td>${m.instante}</td>
-                        <td>${m.velocidad_onda ?? '-'}</td>
-                        <td>${m.frecuencia_onda ?? '-'}</td>
-                        <td>${m.longitud ?? '-'}</td>
-                    </tr>
-                `;
-            });
-            html += `</tbody></table></div>`;
-        }
-        return html;
-    }
+    },
 
-    // Renderiza las series temporales y sus datos anidados
-    function renderSeriesTemporales(series) {
-        if (!series || series.length === 0) {
-            return `<div class="text-center">No hay series temporales.</div>`;
-        }
-        let html = '';
-        series.forEach((serie, idx) => {
-            html += `
-                <div class="mb-4 border rounded p-2">
-                    <h6>Serie Temporal #${idx + 1} (ID: ${serie.id})</h6>
-                    <table class="table table-sm table-bordered mb-2">
-                        <tr><th>Fecha Inicio Registro</th><td>${serie.fechaHoraInicioRegistroMuestras}</td></tr>
-                        <tr><th>Fecha Inicio</th><td>${serie.fechaHoraInicio}</td></tr>
-                        <tr><th>Frecuencia Muestreo</th><td>${serie.frecuenciaMuestreo}</td></tr>
-                        <tr><th>Sismógrafo</th><td>${serie.datosSismografo?.identificadorSismografo || '-'}</td></tr>
-                        <tr><th>Estación</th><td>
-                            ${serie.datosSismografo?.estacion ? 
-                                `(${serie.datosSismografo.estacion.codigoEstacion}) ${serie.datosSismografo.estacion.nombre}` : '-'}
-                        </td></tr>
-                    </table>
-                    <div>
-                        <strong>Muestras Sísmicas:</strong>
-                        ${renderMuestrasSismicas(serie.datosMuestrasSismicas)}
-                    </div>
-                </div>
-            `;
+    async solicitarBloqueoEvento(id, usuario) {
+        const response = await fetch(`${this.API_URL}/evento/${id}/seleccionar`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuario })
         });
-        return html;
-    }
+        if (!response.ok) throw new Error('No se pudo bloquear el evento');
+    },
 
-    // Renderiza las muestras sísmicas y sus detalles
-    function renderMuestrasSismicas(muestras) {
-        if (!muestras || muestras.length === 0) {
-            return `<div class="text-center">No hay muestras sísmicas.</div>`;
+    async mostrarDatosBasicosEvento(id) {
+        try {
+            const response = await fetch(`${this.API_URL}/evento/${id}`);
+            if (!response.ok) throw new Error('Evento no encontrado');
+            const evento = await response.json();
+            this.renderDatosBasicosEvento(evento);
+        } catch (error) {
+            this.eventoSeleccionadoId = null;
+            this.mostrarEventosPendientes();
         }
-        let html = '';
-        muestras.forEach((muestra, idx) => {
-            html += `
-                <div class="mb-2 border rounded p-2">
-                    <div><strong>Muestra #${idx + 1} (ID: ${muestra.id})</strong></div>
-                    <div>Fecha/Hora: ${muestra.fechaHoraMuestra}</div>
-                    <div>
-                        <strong>Detalles:</strong>
-                        ${renderDetallesMuestra(muestra.detalles)}
-                    </div>
-                </div>
-            `;
-        });
-        return html;
-    }
+    },
 
-    // Renderiza los detalles de una muestra sísmica
-    function renderDetallesMuestra(detalles) {
-        if (!detalles || detalles.length === 0) {
-            return `<div class="text-center">No hay detalles.</div>`;
-        }
-        let html = `
-            <table class="table table-sm table-bordered mb-0">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Valor</th>
-                        <th>Tipo de Dato</th>
-                    </tr>
-                </thead>
-                <tbody>
+    renderDatosBasicosEvento(evento) {
+        const modalBody = document.getElementById('eventoModalBody');
+        modalBody.innerHTML = `
+            <table class="table table-bordered w-auto mx-auto mb-4">
+                <tr><th>ID</th><td>${evento.id}</td></tr>
+                <tr><th>Magnitud</th><td>${evento.valorMagnitud}</td></tr>
+                <tr><th>Fecha/Hora</th><td>${evento.fechaHoraOcurrencia}</td></tr>
+                <tr><th>Localización</th><td>${evento.coordenadaEpicentro}</td></tr>
+            </table>
+            <div class="text-center mt-3">
+                <button type="button" class="btn btn-info me-2" id="visualizarMapaBtn">Ver Mapa</button>
+                <button type="button" class="btn btn-info me-2" id="modificarDatosBtn">Modificar</button>
+            </div>
+            <div class="text-center mt-3">
+                <button type="button" class="btn btn-success me-2" id="confirmarBtn">Confirmar</button>
+                <button type="button" class="btn btn-danger me-2" id="rechazarBtn">Rechazar</button>
+                <button type="button" class="btn btn-warning me-2" id="solicitarRevisionBtn">Solicitar Revisión</button>
+            </div>
         `;
-        detalles.forEach(detalle => {
-            html += `
-                <tr>
-                    <td>${detalle.id}</td>
-                    <td>${detalle.nombre || '-'}</td>
-                    <td>${detalle.valor}</td>
-                    <td>${detalle.tipoDeDato || '-'}</td>
-                </tr>
-            `;
-        });
-        html += `</tbody></table>`;
-        return html;
-    }
 
-    // Trae todos los eventos
-    async function fetchEventos() {
-        if (eventoSeleccionadoId) {
-            await fetchEventoPorId(eventoSeleccionadoId);
+        // Instanciar y mostrar el modal
+        const eventoModalEl = document.getElementById('eventoModal');
+        const eventoModal = new bootstrap.Modal(eventoModalEl);
+        eventoModal.show();
+
+        document.getElementById('confirmarBtn').onclick = async () => {
+            await this.tomarOpcionEvento(evento.id, "confirmar");
+            eventoModal.hide();
+        };
+        document.getElementById('rechazarBtn').onclick = async () => {
+            await this.tomarOpcionEvento(evento.id, "rechazar");
+            eventoModal.hide();
+        };
+        document.getElementById('solicitarRevisionBtn').onclick = async () => {
+            await this.tomarOpcionEvento(evento.id, "solicitar revision");
+            eventoModal.hide();
+        };
+        document.getElementById('visualizarMapaBtn').onclick = () => alert('Funcionalidad de mapa no implementada.');
+        document.getElementById('modificarDatosBtn').onclick = () => alert('Funcionalidad de modificación no implementada.');
+    },
+
+    async tomarOpcionEvento(id, opcion) {
+        const usuario = sessionStorage.getItem('usuario');
+        if (!usuario) {
+            alert('Debe iniciar sesión para realizar esta acción.');
+            window.location.href = '/index.html';
             return;
         }
         try {
-            const response = await fetch(`${API_URL}/eventos`);
-            if (!response.ok) {
-                throw new Error('Error al obtener los eventos');
-            }
-            const eventos = await response.json();
-            renderEventos(eventos);
-        } catch (error) {
-            console.error('Error al cargar los eventos:', error);
-        }
-    }
-
-    // Trae un evento por ID
-    async function fetchEventoPorId(id) {
-        try {
-            const response = await fetch(`${API_URL}/evento/${id}`);
-            if (!response.ok) {
-                throw new Error('Evento no encontrado');
-            }
-            const evento = await response.json();
-            renderEventos([evento]);
-        } catch (error) {
-            // Si no existe, limpiar selección y recargar lista normal
-            eventoSeleccionadoId = null;
-            fetchEventos();
-        }
-    }
-
-    // Cambia el estado del evento a un nuevo estado
-    async function tomarSeleccionOpc(id, usuario) {
-        try {
-            const response = await fetch(`${API_URL}/evento/${id}/rechazar`, {
+            await fetch(`${this.API_URL}/evento/${id}/opcion/${opcion}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ usuario })
             });
-            if (!response.ok) {
-                throw new Error('No se pudo cambiar el estado');
-            }
+            this.eventoSeleccionadoId = null;
+            this.mostrarEventosPendientes();
         } catch (error) {
-            console.error('Error al cambiar el estado:', error);
+            this.mostrarError('No se pudo cambiar el estado del evento.');
         }
-    }
-    
-    async function tomarSeleccionES(id, usuario) {
-        try {
-            const response = await fetch(`${API_URL}/evento/${id}/seleccionar`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ usuario })
-            });
-            if (!response.ok) {
-                throw new Error('No se pudo cambiar el estado');
-            }
-        } catch (error) {
-            console.error('Error al cambiar el estado:', error);
-        }
-    }
+    },
 
-    // Carga inicial
-    fetchEventos();
+    mostrarError(msg) {
+        alert(msg);
+    }
+};
 
-});
+// Inicializar la pantalla
+PantallaRegistroResultadoRevisionManual.iniciar();

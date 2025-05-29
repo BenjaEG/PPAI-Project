@@ -1,25 +1,34 @@
-from app.models import EventoSismico, db
+from app.models import EventoSismico, db, Estado
 from datetime import datetime
 
 class GestorRevisionEventos:
-    usuario = None
-
     def __init__(self):
-        pass
+        self.usuario = None
+
+    def tomarSeleccionES(self, evento_id):
+        return self.buscarEstadoBloqueado(evento_id)
+
+    def tomarOpcSolicitada(self, evento_id, opcion):
+        if opcion == "rechazar":
+            return self.buscarEstadoRechazado(evento_id)
+        elif opcion == "confirmar":
+            return self.buscarEstadoConfirmado(evento_id)
+        elif opcion == "solicitar revision":
+            return self.buscarEstadoSolicitadoRevision(evento_id)
 
     def buscarEmpleadoLogueado(self):
         usuario = Sesion().conocerEmpleado()
         return usuario
- 
+
     def getFechaHora(self):
         return datetime.now()
 
-    def bloquearES(self, evento_id, usuario):
+    def bloquearES(self, evento_id, usuario, estado_bloqueado_id):
         evento = EventoSismico.query.get(evento_id)
         if not evento:
             return None
         fecha_hora = self.getFechaHora()
-        evento.bloquear(usuario, fecha_hora)
+        evento.bloquear(usuario, fecha_hora, estado_bloqueado_id)
         db.session.commit()
         return evento
 
@@ -35,6 +44,46 @@ class GestorRevisionEventos:
         eventos = self.ordenarES(eventos)
         return [evento.getDatos() for evento in eventos]
     
+    def buscarEstadoConfirmado(self, evento_id):
+        usuario = self.usuario
+        evento = EventoSismico.query.get(evento_id)
+        errores = self.validarRequisitos(evento)
+        if errores:
+            return {"errores": errores}
+        if not evento:
+            return None
+        estado_confirmado_id = None
+        for estado in Estado.query.all():
+            estado_confirmado_id = estado.esConfirmado()
+            if estado_confirmado_id:
+                break
+        if not estado_confirmado_id:
+            return {"errores": ["No se encontró el estado 'Confirmado'"]}
+        fecha_hora = self.getFechaHora()
+        evento.confirmar(usuario, fecha_hora, estado_confirmado_id)
+        db.session.commit()
+        return evento
+    
+    def buscarEstadoSolicitadoRevision(self, evento_id):
+        usuario = self.usuario
+        evento = EventoSismico.query.get(evento_id)
+        errores = self.validarRequisitos(evento)
+        if errores:
+            return {"errores": errores}
+        if not evento:
+            return None
+        estado_solicitado_revision_id = None
+        for estado in Estado.query.all():
+            estado_solicitado_revision_id = estado.esDerivado()
+            if estado_solicitado_revision_id:
+                break
+        if not estado_solicitado_revision_id:
+            return {"errores": ["No se encontró el estado 'Solicitado Revisión'"]}
+        fecha_hora = self.getFechaHora()
+        evento.solicitarRevision(usuario, fecha_hora, estado_solicitado_revision_id)
+        db.session.commit()
+        return evento
+    
     def buscarEstadoRechazado(self, evento_id):
         usuario = self.usuario
         evento = EventoSismico.query.get(evento_id)
@@ -43,16 +92,31 @@ class GestorRevisionEventos:
             return {"errores": errores}
         if not evento:
             return None
+        estado_rechazado_id = None
+        for estado in Estado.query.all():
+            estado_rechazado_id = estado.esRechazado()
+            if estado_rechazado_id:
+                break
+        if not estado_rechazado_id:
+            return {"errores": ["No se encontró el estado 'Rechazado'"]}
         fecha_hora = self.getFechaHora()
-        evento.rechazar(usuario, fecha_hora)
+        evento.rechazar(usuario, fecha_hora, estado_rechazado_id)
         db.session.commit()
         return evento
 
     def buscarEstadoBloqueado(self, evento_id):
         self.usuario = self.buscarEmpleadoLogueado()
         usuario = self.usuario
-        evento = self.bloquearES(evento_id, usuario)
-        return evento
+        estado_bloqueado_id = None
+        for estado in Estado.query.all():
+            estado_bloqueado_id = estado.esBloqueado()
+            if estado_bloqueado_id:
+                break
+        if not estado_bloqueado_id:
+            return None
+        self.bloquearES(evento_id, usuario, estado_bloqueado_id)
+        datos = self.buscarDatosSismicos(evento_id)
+        return datos
 
     def buscarDatosSismicos(self, evento_id):
         evento = EventoSismico.query.get(evento_id)
@@ -65,7 +129,7 @@ class GestorRevisionEventos:
         datos["series_temporales"] = evento.buscarDatosSeriesTemporales()
         # Clasificar series por estación y reemplazar en el dict
         datos["series_temporales_por_estacion"] = self.clasificarPorEstacion(datos)
-        self.llamarCUGenerarSismoGrama()
+        self.llamarCUGenerarSismoGrama(datos)
         return datos
 
     def clasificarPorEstacion(self, datos):
@@ -110,7 +174,7 @@ class GestorRevisionEventos:
 
         return series_por_estacion
 
-    def llamarCUGenerarSismoGrama(self):
+    def llamarCUGenerarSismoGrama(self, datos):
         pass
 
     def validarRequisitos(self, evento):
