@@ -89,55 +89,11 @@ const PantallaRegistroResultadoRevisionManual = {
             const response = await fetch(`${this.API_URL}/evento/${id}`);
             if (!response.ok) throw new Error('Evento no encontrado');
             const evento = await response.json();
-            this.mostrarPrimerModal(evento);
+            this.renderDatosBasicosEvento(evento);
         } catch (error) {
             this.eventoSeleccionadoId = null;
             this.mostrarEventosPendientes();
         }
-    },
-
-    mostrarPrimerModal(evento) {
-        const modalBody = document.getElementById('eventoModalBody');
-        modalBody.innerHTML = `
-            <div class="text-center">
-                <p>¿Desea visualizar un mapa sísmico y las estaciones involucradas?</p>
-                <button type="button" class="btn btn-primary me-2" id="siMapaBtn">Sí</button>
-                <button type="button" class="btn btn-secondary" id="noMapaBtn">No</button>
-            </div>
-        `;
-        const eventoModalEl = document.getElementById('eventoModal');
-        const eventoModal = new bootstrap.Modal(eventoModalEl);
-        eventoModal.show();
-
-        document.getElementById('siMapaBtn').onclick = () => {
-            // No hace nada
-        };
-        document.getElementById('noMapaBtn').onclick = () => {
-            eventoModal.hide();
-            setTimeout(() => this.mostrarSegundoModal(evento), 300);
-        };
-    },
-
-    mostrarSegundoModal(evento) {
-        const modalBody = document.getElementById('eventoModalBody');
-        modalBody.innerHTML = `
-            <div class="text-center">
-                <p>¿Desea modificar los datos del evento sísmico?</p>
-                <button type="button" class="btn btn-primary me-2" id="siModificarBtn">Sí</button>
-                <button type="button" class="btn btn-secondary" id="noModificarBtn">No</button>
-            </div>
-        `;
-        const eventoModalEl = document.getElementById('eventoModal');
-        const eventoModal = new bootstrap.Modal(eventoModalEl);
-        eventoModal.show();
-
-        document.getElementById('siModificarBtn').onclick = () => {
-            // No hace nada
-        };
-        document.getElementById('noModificarBtn').onclick = () => {
-            eventoModal.hide();
-            setTimeout(() => this.renderDatosBasicosEvento(evento), 300);
-        };
     },
 
     renderDatosBasicosEvento(evento) {
@@ -150,12 +106,17 @@ const PantallaRegistroResultadoRevisionManual = {
                 <tr><th>Localización</th><td>${evento.coordenadaEpicentro}</td></tr>
             </table>
             <div class="text-center mt-3">
+                <button type="button" class="btn btn-info me-2" id="visualizarMapaBtn">Ver Mapa</button>
+                <button type="button" class="btn btn-info me-2" id="modificarDatosBtn">Modificar</button>
+            </div>
+            <div class="text-center mt-3">
                 <button type="button" class="btn btn-success me-2" id="confirmarBtn">Confirmar</button>
                 <button type="button" class="btn btn-danger me-2" id="rechazarBtn">Rechazar</button>
                 <button type="button" class="btn btn-warning me-2" id="solicitarRevisionBtn">Solicitar Revisión</button>
             </div>
         `;
 
+        // Instanciar y mostrar el modal
         const eventoModalEl = document.getElementById('eventoModal');
         const eventoModal = new bootstrap.Modal(eventoModalEl);
         eventoModal.show();
@@ -172,6 +133,8 @@ const PantallaRegistroResultadoRevisionManual = {
             await this.tomarOpcionEvento(evento.id, "solicitar revision");
             eventoModal.hide();
         };
+        document.getElementById('visualizarMapaBtn').onclick = () => alert('Funcionalidad de mapa no implementada.');
+        document.getElementById('modificarDatosBtn').onclick = () => alert('Funcionalidad de modificación no implementada.');
     },
 
     async tomarOpcionEvento(id, opcion) {
