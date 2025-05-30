@@ -35,7 +35,7 @@
             </div>
         </div>
     </nav>
-
+    
     <div class="container mt-4 mb-4">
         <h1 class="mb-4 text-center">Registrar resultado de revisión manual</h1>
         <div id="eventosListContainer">
@@ -62,5 +62,18 @@
 
     <script src="scripts/scripts.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <div class="modal fade" id="detalleEventoModal" tabindex="-1" aria-labelledby="detalleEventoLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="detalleEventoLabel">Detalle del Evento</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body" id="detalleEventoBody">
+            <!-- Aquí se carga el detalle -->
+          </div>
+        </div>
+      </div>
+    </div>
 </body>
 </html>

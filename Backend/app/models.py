@@ -12,7 +12,9 @@ class Estado(db.Model):
             "nombre": self.nombre,
             "ambito": self.ambito
         }
-    
+    def esAmbito(self, ambito):
+        return self.ambito.strip().lower().replace("_", " ") == ambito.strip().lower().replace("_", " ")
+
     def esAutoDetectado(self):
         return self.nombre.strip().lower().replace("_", " ") == "auto detectado"
 
